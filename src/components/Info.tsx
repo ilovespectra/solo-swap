@@ -41,7 +41,7 @@ const Info = () => {
             Swap selected assets into $USDC via
              <a href="https://jup.ag/"> <u>Jupiter swaps.</u></a> <br/>
              <br/>
-            A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps, no fee is taken from account closures.
+            <i>A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps.</i>
           </p>
         </div>
 

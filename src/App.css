@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #000000; /* black background */
+  color: #ffffff; /* white text */
+  margin: 0;
+  font-family: "courier new", courier, monospace; /* updated font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: auto;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.normaltext {
+  font-size: 2em;
+  text-align: center;
+  font-weight: bold;
+  font-style: normal;
+  color: #ffffff; /* changed to white */
+  font-family: "courier new", courier, monospace; /* updated font */
+  border-radius: 0.5em; /* added rounded corners */
+}
+
+.infotext {
+  background: rgba(255, 255, 255, 0.54);
+  color: #000000; /* text color should be black to contrast the white background */
+  padding: 0.5%;
+  border-radius: 0.5em; /* added rounded corners */
+}
+
+pre {
+  font-family: "courier new", courier, monospace; /* updated font */
+  font-size: 0.8em;
+  text-align: left;
+  font-style: normal;
+  color: #ffffff; /* changed to white */
+}
+
+input::placeholder {
+  color: #ffffff;
+  opacity: 0.5;
+}
+
+.card {
+  background: #1a1a1a; /* dark grey background */
+  border: 1px solid #333333; /* slightly lighter grey border */
+  padding: 1em;
+  border-radius: 0.5em;
+  transition: background 0.3s, border 0.3s;
+}
+
+a.card:hover, button.card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+}
+
+.icon-fill-success {
+  fill: #00ff00;
+}
+
+.icon-stroke-success {
+  stroke: #00ff00;
+}
+
+.icon-fill-black {
+  fill: #000000;
+}
+
+.icon-fill-warning {
+  fill: #ffcc00;
+}
+
+.icon-xs {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.icon-md {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon-lg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.bg-faint {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.spot-glow {
+  position: relative;
+  width: 100vw;
+  padding-bottom: 65%;
+  background: radial-gradient(
+    circle at center,
+    #ff5e00 1%,
+    #f8116b 10%,
+    transparent 55%
+  );
+}
+
+section {
+  padding-bottom: 2rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "courier new", courier, monospace;
+}
+
+.btn-outline-gradient {
+  background: linear-gradient(
+    to bottom right,
+    #ec5a16 10%,
+    #cd51e9 50%,
+    #40d2ff,
+    #0a50dc
+  );
+  color: #ffffff;
+  position: relative;
+}
+
+.bg-transfer {
+  background: linear-gradient(rgb(0 0 0), rgb(255 94 0 / 95%) 150%);
+}
+
+.btn-gradient {
+  color: #ffffff;
+  background: linear-gradient(
+    to left,
+    rgb(255, 85, 0),
+    rgb(255, 145, 0)
+  );
+}
+
+.blob {
+  border-radius: 100%;
+  height: 30rem;
+  width: 30rem;
+  filter: blur(20rem);
+}
+
+.fancy-focus:focus {
+  background: linear-gradient(
+    to bottom right,
+    #ec5a16 10%,
+    #cd51e9 50%,
+    #40d2ff,
+    #0a50dc
+  );
+}
+
+.content {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 32rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5em 1em;
+  border-radius: 15px;
+  background-color: #2a2a2a; /* dark grey background */
+  color: white;
+}

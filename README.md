@@ -1,6 +1,6 @@
 # solo swap
 
-this is a rewrap of the bonk pooper scooper. WIP
+this is a rewrap of the [bonk pooper scooper](https://github.com/BonkLabs/pooperscooper).** WIP**
 
 end goal:
 

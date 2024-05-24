@@ -40,8 +40,7 @@ const Info = () => {
             In a pro rata swap, each asset represents the same portion as in your portfolio.
             Swap selected assets into $USDC via
              <a href="https://jup.ag/"> <u>Jupiter swaps.</u></a> <br/>
-            Token accounts for swapped assets are closed, returning the rent to you as Solana.
-            (Typically 0.0024 Solana per account closed).
+             <br/>
             A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps, no fee is taken from account closures.
           </p>
         </div>
@@ -61,7 +60,7 @@ const Info = () => {
                     {title}
                   </h2>
 
-                  <p className="lowercase mt-1 text-sm text-gray-800 font-semibold tracking-wide">
+                  <p className="lowercase mt-1 text-sm text-gray-600 font-semibold tracking-wide">
                     {description}
                   </p>
                 </div>

@@ -53,34 +53,32 @@ interface TokenBalance {
   programId: PublicKey;
   ataId: PublicKey;
 }
-const USDC_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-// const SOL_TOKEN_MINT = "So11111111111111111111111111111111111111112";
+const BONK_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
+const liquidStableTokens = ["mSOL", "USDC", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
+const forbiddenTokens = ["USDT"].concat(liquidStableTokens);
 
-const liquidStableTokens = ["mSOL", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
-const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
-
+// Removed distributionTargets since no fee will be distributed
+/*
 const distributionTargets: [PublicKey, number][] = [
   [
     getAssociatedTokenAddressSync(
-      new PublicKey(USDC_TOKEN_MINT),
-      new PublicKey("HeXcqXctiunh2QQeRnYQVXRHUJtdUYEiCZDvauHXUgcP") // pro rata fees
+      new PublicKey(BONK_TOKEN_MINT),
+      new PublicKey("2Vi8WzFHAAVNjtAquByvdzzpw8p4MuXhkQyBxs4qSVxw") // bonk fees
     ),
-    0.22999999999999998 
+    0.22999999999999998 // 0.22999999999999998%
   ]
 ];
-
+*/
 
 /**
  * Get the total fee amount
  */
 function getTotalFee(): number {
-  let totalFee = 0.0;
-  distributionTargets.forEach(([target, feePercent]) => {
-    totalFee += feePercent;
-  });
-  return totalFee;
+  // Return 0 since no fee is being applied
+  return 0.0;
 }
+
 
 /**
  * Returns the expected outputs of burning an asset
@@ -107,10 +105,13 @@ function getAssetBurnReturn(asset: Asset): {burnAmount: bigint, bonkAmount: bigi
     lamportsAmount = BigInt(2400000);
   }
 
-  let totalFee = getTotalFee();
+  // Remove fee calculation
+  // let totalFee = getTotalFee();
+  // let feeAmount = bonkAmount / BigInt(Math.floor(100 / totalFee));
+  // bonkAmount -= feeAmount;
 
-  let feeAmount = bonkAmount / BigInt(Math.floor(100 / totalFee));
-  bonkAmount -= feeAmount;
+  // Set feeAmount to 0 since we're removing the fee
+  let feeAmount = BigInt(0);
 
   return {
     burnAmount: burnAmount,
@@ -298,6 +299,8 @@ async function buildBurnTransaction(
 
     // Removed close account section
 
+    // Removed the fee distribution section since no fee will be applied
+    /*
     distributionTargets.forEach(([target, sharePercent]) => {
       if (
         wallet.publicKey && asset.quote && 
@@ -305,7 +308,7 @@ async function buildBurnTransaction(
       ) {
         const transferInstruction = createTransferInstruction(
           getAssociatedTokenAddressSync(
-            new PublicKey(USDC_TOKEN_MINT),
+            new PublicKey(BONK_TOKEN_MINT),
             wallet.publicKey
           ),
           target,
@@ -315,6 +318,7 @@ async function buildBurnTransaction(
         instructions.push(transferInstruction);
       }
     });
+    */
 
     console.log(instructions);
     if (instructions.length > 0) {
@@ -331,6 +335,7 @@ async function buildBurnTransaction(
   }
   return null;
 }
+
 
 
 /**
@@ -499,6 +504,6 @@ async function loadJupyterApi(): Promise<
   });
   return [quoteApi, tokenMap];
 }
-export { getTokenAccounts, getAssetBurnReturn, sweepTokens, findQuotes, loadJupyterApi, getTotalFee, USDC_TOKEN_MINT };
+export { getTokenAccounts, getAssetBurnReturn, sweepTokens, findQuotes, loadJupyterApi, getTotalFee, BONK_TOKEN_MINT };
 
 export type { TokenInfo, TokenBalance };

@@ -6,7 +6,7 @@ import {
   TokenInfo,
   TokenBalance,
   loadJupyterApi,
-  USDC_TOKEN_MINT,
+  BONK_TOKEN_MINT,
   getAssetBurnReturn,
 } from "../scooper";
 import {
@@ -85,8 +85,8 @@ const AssetList: React.FC = () => {
   const [showStrict, setShowStrict] = useState(false);
 
   // Sort
-  const [sortOption, setSortOption] = useState("");
-  const [ascending, setAscending] = useState(true);
+  const [sortOption, setSortOption] = useState("scoopValue");
+  const [ascending, setAscending] = useState(false);
 
   const isButtonDisabled = !Object.values(assetList).some(
     (entry) => entry.checked
@@ -166,7 +166,7 @@ const AssetList: React.FC = () => {
       findQuotes(
         connection,
         tokens,
-        USDC_TOKEN_MINT,
+        BONK_TOKEN_MINT,
         walletAddress,
         jupiterQuoteApi,
         (id, asset) => {
@@ -529,15 +529,12 @@ const AssetList: React.FC = () => {
                   Balance
                 </th>
                 <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
-                  $USDC
+                  value
                 </th>
-                <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
+                {/* <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
                   Sol
-                </th>
-                <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
-                  Fee ($USDC)
-                </th>
-                <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right flex gap-4 justify-end">
+                </th> */}
+                {/* <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right flex gap-4 justify-end">
                   Token List
                   <div className="lowercase group relative hover:cursor-help max-w-max">
                     <svg
@@ -573,7 +570,7 @@ const AssetList: React.FC = () => {
                 </th>
                 {/* <th className="whitespace-nowrap p-4 font-medium text-gray-900 text-lg">
                     Status
-                  </th> */}
+                  </th> */} 
               </tr>
             </thead>
             <tbody className="lowercase divide-y divide-gray-200 relative">
@@ -695,27 +692,26 @@ const AssetList: React.FC = () => {
                       ).toLocaleString()}
                     </td>
                     <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
-                      {entry.quote?.outAmount
+                      ${entry.quote?.outAmount
                         ? (
                             Number(burnReturn.bonkAmount) /
-                            10 ** 5
-                          ).toLocaleString()
+                            (10 ** 5)/10).toLocaleString()
                         : "No quote"}
                     </td>
-                    <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    {/* <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
                       {(
                         Number(burnReturn.lamportsAmount) / LAMPORTS_PER_SOL
                       ).toLocaleString()}
-                    </td>
-                    <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    </td> */}
+                    {/* <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
                       {(
                         Number(burnReturn.feeAmount) /
                         10 ** 5
                       ).toLocaleString()}
-                    </td>
-                    <td className="whitespace-nowrap p-4 bg-black text-white text-right">
+                    </td> */}
+                    {/* <td className="whitespace-nowrap p-4 bg-black text-white text-right">
                       {entry.asset?.token.strict && <p>Strict</p>}
-                    </td>
+                    </td> */}
                     <td className="whitespace-nowrap p-4 bg-black text-white text-right">
                       {entry.transactionState && (
                         <p>{entry.transactionState}</p>
@@ -751,7 +747,7 @@ const AssetList: React.FC = () => {
 
               <div>
                 <p className="text-2xl bg-black text-white font-medium text-gray-900">
-                  ${(totalPossibleScoop / 10 ** 5).toLocaleString()}
+                  ${(totalPossibleScoop / (10 ** 5)/10).toLocaleString()}
                 </p>
 
                 <p className="text-sm text-gray-500 lowercase">available</p>
@@ -897,7 +893,7 @@ const AssetList: React.FC = () => {
                       </label>
                     </li>
 
-                    <li>
+                    {/* <li>
                       <label className="lowercase inline-flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -909,7 +905,7 @@ const AssetList: React.FC = () => {
                           Strict
                         </span>
                       </label>
-                    </li>
+                    </li> */}
                   </ul>
                 </div>
               </details>

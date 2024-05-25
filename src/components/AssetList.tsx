@@ -52,7 +52,7 @@ class AssetState {
   }
 }
 
-const forbiddenTokens = ["Bonk", "USDC", "USDT"];
+const forbiddenTokens = ["USDC"];
 
 const AssetList: React.FC = () => {
   const { connection } = useConnection();

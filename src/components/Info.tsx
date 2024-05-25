@@ -40,8 +40,8 @@ const Info = () => {
             In a pro rata swap, each asset represents the same portion as in your portfolio.
             Swap selected assets into $USDC via
              <a href="https://jup.ag/"> <u>Jupiter swaps.</u></a> <br/>
-             <br/>
-            <i>A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps.</i>
+             {/* <br/> */}
+            {/* <i>A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps.</i> */}
           </p>
         </div>
 

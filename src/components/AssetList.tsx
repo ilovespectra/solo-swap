@@ -55,6 +55,7 @@ class AssetState {
 const forbiddenTokens = ["USDC"];
 
 const AssetList: React.FC = () => {
+  
   const { connection } = useConnection();
   const wallet = useWallet();
   const [assetList, setAssetList] = React.useState<{
@@ -65,11 +66,26 @@ const AssetList: React.FC = () => {
   const [state, setState] = React.useState<ApplicationStates>(
     ApplicationStates.LOADING
   );
-  const [percentage, setPercentage] = useState(0);
+  const [percentage, setPercentage] = useState<number>(0);
+  const [valueToSwap, setValueToSwap] = useState<number>(0);
 
+  // Function to handle changes in the percentage input
   const handlePercentageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    // Update the percentage state when the input value changes
-    setPercentage(parseFloat(e.target.value));
+    const inputPercentage = parseFloat(e.target.value);
+    setPercentage(inputPercentage);
+    // Calculate the value to swap based on the totalScoop and percentage
+    const calculatedValueToSwap = (totalScoop * inputPercentage) / 100;
+    setValueToSwap(calculatedValueToSwap);
+  };
+  var [totalScoop, setTotalScoop] = useState<number>(0);
+
+  // Function to handle changes in the totalScoop
+  const handleTotalScoopChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newTotalScoop = parseFloat(e.target.value);
+    setTotalScoop(newTotalScoop);
+    // Recalculate the value to swap based on the updated totalScoop and percentage
+    const calculatedValueToSwap = (newTotalScoop * percentage) / 100;
+    setValueToSwap(calculatedValueToSwap);
   };
 
   const handleSwapButtonClick = () => {
@@ -225,7 +241,6 @@ const AssetList: React.FC = () => {
 
   /* Maintain counters of the total possible yield and yield from selected swaps */
   var totalPossibleScoop = 0;
-  var totalScoop = 0;
 
   Object.entries(assetList).forEach(([key, asset]) => {
     if (asset.quote) {
@@ -781,8 +796,21 @@ const AssetList: React.FC = () => {
                 <p className="lowercase text-2xl font-medium bg-black text-white">
                   ${(totalScoop / 10 ** 5).toLocaleString()}
                 </p>
-
-                <p className="lowercase text-sm bg-black text-white">to swap</p>
+                <div>
+                <input
+          type="number"
+          min="0"
+          max="100"
+          value={percentage}
+          onChange={handlePercentageChange}
+          className="lowercase border border-gray-300 bg-black text-white rounded-md p-2"
+        />
+        <span>%</span>
+    </div>
+    <p className="lowercase text-2xl font-medium bg-black text-white">
+          ${(valueToSwap / 10 ** 5).toLocaleString()}
+        </p>
+        <p className="lowercase text-sm bg-black text-white">to swap</p>
               </div>
             </article>
             <button

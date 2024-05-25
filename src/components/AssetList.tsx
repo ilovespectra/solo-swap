@@ -365,7 +365,7 @@ const AssetList: React.FC = () => {
                             {entry.quote?.outAmount
                               ? (
                                   Number(entry.quote.outAmount) /
-                                  10 ** 5
+                                  (10 ** 5)/10
                                 ).toLocaleString()
                               : "No quote"}
                           </dd>
@@ -490,7 +490,7 @@ const AssetList: React.FC = () => {
 
                   <div className="flex lowercase justify-between">
                     <dt>estimated Swap Value</dt>
-                    <dd>{(totalScoop / 10 ** 5).toLocaleString()}</dd>
+                    <dd>${(totalScoop / (10 ** 5)/10).toLocaleString()}</dd>
                   </div>
                 </dl>
               </div>
@@ -794,7 +794,7 @@ const AssetList: React.FC = () => {
 
               <div>
                 <p className="lowercase text-2xl font-medium bg-black text-white">
-                  ${(totalScoop / 10 ** 5).toLocaleString()}
+                  ${(totalScoop / (10 ** 5)/10).toLocaleString()}
                 </p>
                 <div>
                 <input
@@ -808,7 +808,7 @@ const AssetList: React.FC = () => {
         <span>%</span>
     </div>
     <p className="lowercase text-2xl font-medium bg-black text-white">
-          ${(valueToSwap / 10 ** 5).toLocaleString()}
+          ${(valueToSwap / (10 ** 5)/10).toLocaleString()}
         </p>
         <p className="lowercase text-sm bg-black text-white">to swap</p>
               </div>

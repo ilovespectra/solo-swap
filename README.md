@@ -1,6 +1,10 @@
+# DONT USE YET!!!
+
+it will swap 100% of your selected assets for usdc
+
 # solo swap
 
-this is a rewrap of the [bonk pooper scooper](https://github.com/BonkLabs/pooperscooper).** WIP**
+this is a rewrap of the [bonk pooper scooper](https://github.com/BonkLabs/pooperscooper). WIP
 
 end goal:
 

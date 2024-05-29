@@ -18,6 +18,9 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { track } from '@vercel/analytics';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMoneyBillWave, faChartPie } from '@fortawesome/free-solid-svg-icons';
+
 
 enum ApplicationStates {
   LOADING = 0,
@@ -490,7 +493,7 @@ const AssetList: React.FC = () => {
 
                   <div className="flex lowercase justify-between">
                     <dt>estimated Swap Value</dt>
-                    <dd>${(totalScoop / (10 ** 5)/10).toLocaleString()}</dd>
+                    <dd>${(totalScoop / 10 ** 5 / 10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}</dd>
                   </div>
                 </dl>
               </div>
@@ -702,15 +705,12 @@ const AssetList: React.FC = () => {
                     </td>
                     <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
                       {(
-                        Number(entry.asset?.balance) /
-                        10 ** entry.asset.token.decimals
-                      ).toLocaleString()}
+                     (Number(entry.asset?.balance) / 10 ** entry.asset.token.decimals).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))}
                     </td>
                     <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
                       ${entry.quote?.outAmount
                         ? (
-                            Number(burnReturn.bonkAmount) /
-                            (10 ** 5)/10).toLocaleString()
+                          (Number(burnReturn.bonkAmount) / 10 ** 5 / 10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))
                         : "No quote"}
                     </td>
                     {/* <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
@@ -741,7 +741,7 @@ const AssetList: React.FC = () => {
         <div className="lg:sticky order-first lg:order-last top-12 mb-auto grid gap-4">
           <div className="flex flex-col gap-4 bg-black text-white rounded-3xl p-4">
             <article className="flex items-center gap-4 rounded-lg border border-gray-300 bg-black text-white py-6 px-4 sm:justify-between">
-              <span className="rounded-full bg-black text-white p-3 text-pink-500 sm:order-last">
+              {/* <span className="rounded-full bg-black text-white p-3 text-pink-500 sm:order-last">
                 <svg
                   width="24"
                   height="24"
@@ -758,19 +758,22 @@ const AssetList: React.FC = () => {
                   <path d="M9 9H11V17H9V9Z" fill="currentColor" />
                   <path d="M13 9H15V17H13V9Z" fill="currentColor" />
                 </svg>
-              </span>
-
+              </span> */}
+<span className="rounded-full bg-black text-white p-3 sm:order-last">
+        <FontAwesomeIcon icon={faMoneyBillWave} size="2x" className="text-green-300" />
+      </span>
               <div>
-                <p className="text-2xl bg-black text-white font-medium text-gray-900">
-                  ${(totalPossibleScoop / (10 ** 5)/10).toLocaleString()}
-                </p>
+              <p className="text-2xl bg-black text-white font-medium text-gray-900">
+  {Number((totalPossibleScoop / (10 ** 5) / 10).toFixed(2)).toLocaleString()}
+</p>
 
-                <p className="text-sm text-gray-500 lowercase">available</p>
+
+                <p className="text-sm text-gray-500 lowercase">portfolio value</p>
               </div>
             </article>
             <article className="flex items-center gap-4 rounded-lg border border-gray-300 bg-black text-white py-6 px-4 sm:justify-between">
               <span className="rounded-full bg-black text-white sm:order-last">
-                <svg
+                {/* <svg
                   width="24"
                   height="24"
                   viewBox="0 0 24 24"
@@ -789,13 +792,16 @@ const AssetList: React.FC = () => {
                     d="M1 14C1 9.02944 5.02944 5 10 5C10.6746 5 11.3454 5.07584 12 5.22504V12H18.775C18.9242 12.6546 19 13.3254 19 14C19 18.9706 14.9706 23 10 23C5.02944 23 1 18.9706 1 14ZM16.8035 14H10V7.19648C6.24252 7.19648 3.19648 10.2425 3.19648 14C3.19648 17.7575 6.24252 20.8035 10 20.8035C13.7575 20.8035 16.8035 17.7575 16.8035 14Z"
                     fill="currentColor"
                   />
-                </svg>
+                </svg> */}
+                <span className="rounded-full bg-black text-white p-3 sm:order-last">
+        <FontAwesomeIcon icon={faChartPie} size="2x" className="text-pink-500" />
+      </span>
               </span>
 
               <div>
-                <p className="lowercase text-2xl font-medium bg-black text-white">
+                {/* <p className="lowercase text-2xl font-medium bg-black text-white">
                   ${(totalScoop / (10 ** 5)/10).toLocaleString()}
-                </p>
+                </p> */}
                 <div>
                 <input
           type="number"
@@ -807,7 +813,7 @@ const AssetList: React.FC = () => {
         />
         <span>%</span>
     </div>
-    <p className="lowercase text-2xl font-medium bg-black text-white">
+    <p className="lowercase text-2xl mt-2 font-medium bg-black text-white">
           ${(valueToSwap / (10 ** 5)/10).toLocaleString()}
         </p>
         <p className="lowercase text-sm bg-black text-white">to swap</p>

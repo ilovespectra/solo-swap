@@ -60,7 +60,7 @@ const Info = () => {
                     {title}
                   </h2>
 
-                  <p className="lowercase mt-1 text-sm text-gray-600 font-semibold tracking-wide">
+                  <p className="lowercase mt-1 text-sm text-gray-300 font-semibold tracking-wide">
                     {description}
                   </p>
                 </div>

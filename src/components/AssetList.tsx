@@ -204,6 +204,8 @@ const AssetList: React.FC = () => {
           });
         },
         (id, error) => {}
+        // ,
+        // percentage
       ).then(() => {
         setState(ApplicationStates.LOADED_QUOTES);
       });
@@ -228,6 +230,8 @@ const AssetList: React.FC = () => {
         },
         (id, txid) => {},
         (id, error) => {}
+        // ,
+        // percentage
       )
         .then(() => {
           setState(ApplicationStates.SCOOPED);
@@ -674,6 +678,7 @@ const AssetList: React.FC = () => {
                         className="flex gap-4 items-center hover:font-bold"
                         href={`https://birdeye.so/token/${entry.asset.token.address}?chain=solana`}
                         target="_blank"
+                        rel="noreferrer"
                       >
                         {entry.asset.token.logoURI ? (
                           <img
@@ -703,11 +708,11 @@ const AssetList: React.FC = () => {
                         <p>{entry.asset.token.symbol}</p>
                       </a>
                     </td>
-                    <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    <td className="whitespace-nowrap p-4 text-blue-300 text-right font-mono">
                       {(
                      (Number(entry.asset?.balance) / 10 ** entry.asset.token.decimals).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))}
                     </td>
-                    <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    <td className="whitespace-nowrap p-4 text-green-300 text-right font-mono">
                       ${entry.quote?.outAmount
                         ? (
                           (Number(burnReturn.bonkAmount) / 10 ** 5 / 10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))
@@ -760,15 +765,15 @@ const AssetList: React.FC = () => {
                 </svg>
               </span> */}
 <span className="rounded-full bg-black text-white p-3 sm:order-last">
-        <FontAwesomeIcon icon={faMoneyBillWave} size="2x" className="text-green-300" />
+        <FontAwesomeIcon icon={faMoneyBillWave} size="1x" className="text-green-300" />
       </span>
               <div>
-              <p className="text-2xl bg-black text-white font-medium text-gray-900">
+              <p className="text-2xl bg-black text-white font-medium text-white">
   {Number((totalPossibleScoop / (10 ** 5) / 10).toFixed(2)).toLocaleString()}
 </p>
 
 
-                <p className="text-sm text-gray-500 lowercase">portfolio value</p>
+                <p className="text-sm text-white lowercase">portfolio value</p>
               </div>
             </article>
             <article className="flex items-center gap-4 rounded-lg border border-gray-300 bg-black text-white py-6 px-4 sm:justify-between">
@@ -794,7 +799,7 @@ const AssetList: React.FC = () => {
                   />
                 </svg> */}
                 <span className="rounded-full bg-black text-white p-3 sm:order-last">
-        <FontAwesomeIcon icon={faChartPie} size="2x" className="text-pink-500" />
+        <FontAwesomeIcon icon={faChartPie} size="1x" className="text-pink-500" />
       </span>
               </span>
 
@@ -814,7 +819,7 @@ const AssetList: React.FC = () => {
         <span>%</span>
     </div>
     <p className="lowercase text-2xl mt-2 font-medium bg-black text-white">
-          ${(valueToSwap / (10 ** 5)/10).toLocaleString()}
+          ${(valueToSwap / (10 ** 5)/10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}
         </p>
         <p className="lowercase text-sm bg-black text-white">to swap</p>
               </div>

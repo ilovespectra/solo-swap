@@ -12,14 +12,14 @@ pro rata swapper- allowing the user to select tokens from their account they wis
 
 ## TO DO LIST
 
-[x]- remove fees</br>
-[x]- remove burn account instruction</br>
-[x]- change swapped token to USDC</br>
-[]- onMount/useEffect one-shot call for the buildburn instruction (quote fetch), then again when swap button his hit, which will require:</br>
-   >[] - separate the scooper functions into scripts</br>
-   >[]- separate the assetlist functions into scripts</br>
-   >[]- create a store for userpercentage value</br>
-   >[]- * userpercentage to quote fetch (per token)</br>
+- [x] remove fees</br>
+- [x] remove burn account instruction</br>
+- [x] change swapped token to USDC</br>
+- [ ] onMount/useEffect one-shot call for the buildburn instruction (quote fetch), then again when swap button his hit, which will require:</br>
+   - [ ] separate the scooper functions into scripts</br>
+   - [ ] separate the assetlist functions into scripts</br>
+   - [ ] create a store for userpercentage value</br>
+   - [ ] * userpercentage to quote fetch (per token)</br>
 
 
 # Pooper Scooper

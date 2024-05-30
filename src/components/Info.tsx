@@ -33,9 +33,9 @@ const Info = () => {
       <div className="max-w-screen-xl">
         <div className="max-w-xl">
           <h2 className="lowercase text-3xl font-black sm:text-6xl uppercase">
-            Solo Swap [coming soon]
+            Solo Swap
           </h2>
-          <p><i>don't use yet! it will swap 100% of your selected assets for usdc</i></p>
+          <p><i>[coming soon] don't use yet! it will swap 100% of your selected assets for usdc</i></p>
           <p className="lowercase mt-4 font-semibold tracking-wide">
             In a pro rata swap, each asset represents the same portion as in your portfolio.
             Swap selected assets into $USDC via

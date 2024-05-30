@@ -708,11 +708,11 @@ const AssetList: React.FC = () => {
                         <p>{entry.asset.token.symbol}</p>
                       </a>
                     </td>
-                    <td className="whitespace-nowrap p-4 text-blue-300 text-right font-mono">
+                    <td className="whitespace-nowrap p-4 text-blue-300 text-right font-mono hover:font-bold">
                       {(
                      (Number(entry.asset?.balance) / 10 ** entry.asset.token.decimals).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))}
                     </td>
-                    <td className="whitespace-nowrap p-4 text-green-300 text-right font-mono">
+                    <td className="whitespace-nowrap p-4 text-green-300 text-right font-mono hover:font-bold">
                       ${entry.quote?.outAmount
                         ? (
                           (Number(burnReturn.bonkAmount) / 10 ** 5 / 10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))

@@ -431,6 +431,7 @@ async function findQuotes(
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
+  percentage: Number,
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
@@ -451,11 +452,21 @@ async function findQuotes(
         slippageBps: 1500
       };
 
+      // const swapQuoteRequest: QuoteGetRequest = {
+      //   inputMint: asset.token.address,
+      //   outputMint: outputMint,
+      //   amount: Number(asset.balance) * Number(usePercentage), 
+      //   slippageBps: 1500
+      // };
+
       console.log(quoteRequest);
+      // console.log(swapQuoteRequest);
 
       try {
         const quote = await quoteApi.quoteGet(quoteRequest);
+        // const swapquote = await quoteApi.quoteGet(swapQuoteRequest);
         foundQuoteCallback(asset.token.address, quote);
+        // foundQuoteCallback(asset.token.address, swapquote);
 
         const rq: SwapPostRequest = {
           swapRequest: {
@@ -464,9 +475,18 @@ async function findQuotes(
           }
         };
 
+        // const swaprq: SwapPostRequest = {
+        //   swapRequest: {
+        //     userPublicKey: walletAddress,
+        //     quoteResponse: swapquote
+        //   }
+        // };
+
         try {
           const swap = await quoteApi.swapInstructionsPost(rq);
+          // const swapswap = await quoteApi.swapInstructionsPost(swaprq);
           foundSwapCallback(asset.token.address, swap);
+          // foundSwapCallback(asset.token.address, swapswap);
         } catch (swapErr) {
           console.log(`Failed to get swap for ${asset.token.symbol}`);
           console.log(swapErr);

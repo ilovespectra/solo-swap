@@ -23,15 +23,18 @@ import { render } from "react-dom";
 import AssetList from "./components/AssetList";
 import Info from "./components/Info";
 import Header from "./components/Header";
+import { PercentageProvider } from './PercentageContext';
 
 require("./App.css");
 require("@solana/wallet-adapter-react-ui/styles.css");
 
 const App: FC = () => {
   return (
+    <PercentageProvider>
     <Context>
       <Content />
     </Context>
+    </PercentageProvider>
   );
 };
 export default App;

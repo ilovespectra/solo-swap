@@ -431,7 +431,7 @@ async function findQuotes(
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
-  percentage: Number,
+  // percentage: Number,
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,

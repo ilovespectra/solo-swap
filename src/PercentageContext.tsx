@@ -27,8 +27,10 @@ export const usePercentage = () => {
 
 export const usePercentageValue = () => {
   const context = useContext(PercentageContext);
+  console.log("percentage value number:",usePercentageValue)
   if (!context) {
     throw new Error('usePercentageValue must be used within a PercentageProvider');
   }
   return context.percentage;
+  
 };

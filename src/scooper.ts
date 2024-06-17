@@ -432,7 +432,7 @@ async function findQuotes(
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
-  usePercentageValue: number, // Add percentage parameter
+  usePercentageValue: number, 
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
@@ -446,17 +446,17 @@ async function findQuotes(
       console.log(asset);
       foundAssetCallback(asset.token.address, asset);
 
-      const adjustedAmount = Number(asset.balance);
-      console.log('Adjusted Amount:', adjustedAmount);
+      const adjustedAmount = Number(asset.balance) * Number(usePercentageValue);
 
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
         outputMint: outputMint,
-        amount: adjustedAmount, // Adjusted amount based on the percentage
+        amount: adjustedAmount,
         slippageBps: 1500
       };
 
       console.log("quote request log;", quoteRequest);
+      console.log(`Adjusted Amount for ${asset.token}: is ${adjustedAmount}`);
 
       try {
         const quote = await quoteApi.quoteGet(quoteRequest);
@@ -469,8 +469,7 @@ async function findQuotes(
           }
         };
 
-        console.log('Percentage:', usePercentageValue);
-
+        console.log('Percentage from usePercentageValue:', usePercentageValue);
 
         try {
           const swap = await quoteApi.swapInstructionsPost(rq);

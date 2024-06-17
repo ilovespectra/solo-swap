@@ -1,18 +1,24 @@
 import { AssetState } from "./assetState";
 import { ApplicationStates } from "./applicationStates";
+import { debounce } from "./debounce";
 
 export function updateAssetList(
-  setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
-  updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
-) {
-  setAssetList((aL) => {
-    console.log("Old state:", aL);
-    let newState = updater({ ...aL });
-    console.log("New state:", newState);
-    return newState;
-  });
-}
-
+    setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
+    updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
+  ) {
+    setAssetList((aL) => {
+      console.log("Old state:", aL);
+      let newState = updater({ ...aL });
+      console.log("New state:", newState);
+      if (newState) {
+        return newState;
+      } else {
+        console.error("Updater returned undefined state");
+        return aL; // Return the previous state to prevent setting undefined
+      }
+    });
+  }
+  
 export function reload(
   setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
   setState: React.Dispatch<React.SetStateAction<ApplicationStates>>,
@@ -67,5 +73,6 @@ export function handleTotalScoopChange(
     setValueToSwap(calculatedValueToSwap);
   };
 }
+
 
 export {};

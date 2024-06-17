@@ -6,5 +6,6 @@ export enum ApplicationStates {
     SCOOPED = 4,
   }
   
+  
   export {}; // This ensures the file is treated as a module
   

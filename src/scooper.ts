@@ -28,6 +28,7 @@ import {
   SwapPostRequest,
   createJupiterApiClient
 } from '@jup-ag/api';
+import { usePercentageValue } from './PercentageContext';
 
 interface TokenInfo {
   address: string;
@@ -410,15 +411,15 @@ async function sweepTokens(
     );
   }
 }
-
 /**
  * Get quotes and transaction data to swap input currencies into output currency
  *
  * @param connection - The connection to use
  * @param tokens - The tokens to seek quotes for
  * @param outputMint - The Mint for the output currency
- * @param walletAddress - Callback to notify when a transaction has an ID
- * @param quoteApi - Users wallet address
+ * @param walletAddress - Users wallet address
+ * @param quoteApi - Instance of Jupiter API
+ * @param usePercentageValue - User-inputted percentage to calculate quote amount
  * @param foundAssetCallback - Callback to notify when an asset held by the user has been found
  * @param foundQuoteCallback - Callback to notify when a quote for the user asset has been found
  * @param foundSwapCallback - Callback to notify when the swap transaction details for the user asset has been found
@@ -431,7 +432,7 @@ async function findQuotes(
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
-  // percentage: Number,
+  usePercentageValue: number, // Add percentage parameter
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
@@ -445,28 +446,21 @@ async function findQuotes(
       console.log(asset);
       foundAssetCallback(asset.token.address, asset);
 
+      const adjustedAmount = Number(asset.balance);
+      console.log('Adjusted Amount:', adjustedAmount);
+
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
         outputMint: outputMint,
-        amount: Number(asset.balance), // Casting this to number can discard precision...
+        amount: adjustedAmount, // Adjusted amount based on the percentage
         slippageBps: 1500
       };
 
-      // const swapQuoteRequest: QuoteGetRequest = {
-      //   inputMint: asset.token.address,
-      //   outputMint: outputMint,
-      //   amount: Number(asset.balance) * Number(usePercentage), 
-      //   slippageBps: 1500
-      // };
-
-      console.log(quoteRequest);
-      // console.log(swapQuoteRequest);
+      console.log("quote request log;", quoteRequest);
 
       try {
         const quote = await quoteApi.quoteGet(quoteRequest);
-        // const swapquote = await quoteApi.quoteGet(swapQuoteRequest);
         foundQuoteCallback(asset.token.address, quote);
-        // foundQuoteCallback(asset.token.address, swapquote);
 
         const rq: SwapPostRequest = {
           swapRequest: {
@@ -475,18 +469,12 @@ async function findQuotes(
           }
         };
 
-        // const swaprq: SwapPostRequest = {
-        //   swapRequest: {
-        //     userPublicKey: walletAddress,
-        //     quoteResponse: swapquote
-        //   }
-        // };
+        console.log('Percentage:', usePercentageValue);
+
 
         try {
           const swap = await quoteApi.swapInstructionsPost(rq);
-          // const swapswap = await quoteApi.swapInstructionsPost(swaprq);
           foundSwapCallback(asset.token.address, swap);
-          // foundSwapCallback(asset.token.address, swapswap);
         } catch (swapErr) {
           console.log(`Failed to get swap for ${asset.token.symbol}`);
           console.log(swapErr);

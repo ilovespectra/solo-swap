@@ -1,5 +1,5 @@
-import { QuoteResponse, SwapInstructionsResponse } from "@jup-ag/api";
 import { TokenBalance } from "../../scooper";
+import { QuoteResponse, SwapInstructionsResponse } from "@jup-ag/api";
 
 export class AssetState {
   asset: TokenBalance;
@@ -25,5 +25,6 @@ export class AssetState {
     this.transactionId = transactionIdArg;
   }
 }
+
 
 export {};

@@ -54,6 +54,13 @@ interface TokenBalance {
   programId: PublicKey;
   ataId: PublicKey;
 }
+
+interface PercentageContextProps {
+  percentage: number;
+  bigIntPercentage: bigint;
+  setPercentage: (value: number) => void;
+}
+
 const BONK_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 const liquidStableTokens = ["mSOL", "USDC", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
@@ -260,7 +267,8 @@ async function buildBurnTransaction(
   wallet: WalletContextState,
   connection: Connection,
   blockhash: string,
-  asset: Asset
+  asset: Asset,
+  percentage = usePercentageValue,
 ): Promise<VersionedTransaction | null> {
   if (asset.checked && wallet.publicKey) {
     var instructions: TransactionInstruction[] = [];
@@ -360,6 +368,82 @@ async function sweepTokens(
 ): Promise<void> {
   const transactions: [string, VersionedTransaction][] = [];
   const blockhash = await (await connection.getLatestBlockhash()).blockhash;
+  
+  await Promise.all(
+    assets.map(async (asset) => {
+      const tx = await buildBurnTransaction(
+        wallet,
+        connection,
+        blockhash,
+        asset
+      );
+      if (tx) {
+        transactions.push([asset.asset.token.address, tx]);
+      }
+    })
+  );
+
+  console.log('Transactions');
+  console.log(transactions);
+
+  if (wallet.signAllTransactions) {
+    const signedTransactions = await wallet.signAllTransactions(
+      transactions.map(([id, transaction]) => transaction)
+    );
+
+    console.log('Signed transactions:');
+    console.log(signedTransactions);
+    console.log(transactions);
+
+    await Promise.all(
+      signedTransactions.map(async (transaction, i) => {
+        const assetId = transactions[i][0];
+        transactionStateCallback(assetId, 'Swapping pro rata');
+
+        try {
+          const result = await sendAndConfirmRawTransaction(
+            connection,
+            Buffer.from(transaction.serialize()),
+            {}
+          );
+          console.log('Transaction Success!');
+          transactionStateCallback(assetId, 'Swapped');
+          transactionIdCallback(assetId, result);
+        } catch (err) {
+          console.log('Transaction failed!');
+          console.log(err);
+          transactionStateCallback(assetId, 'Error');
+          errorCallback(assetId, err);
+        }
+      })
+    );
+  }
+}
+
+
+
+/**
+ * Sweeps a set of assets, signing and executing a set of previously determined transactions to swap them into the target currency
+ *
+ * @param wallet - The users public key as a string
+ * @param connection - The connection to use
+ * @param assets - List of the assets to be swept
+ * @param transactionStateCallback - Callback to notify as a transactions state updates
+ * @param transactionIdCallback - Callback to notify when a transaction has an ID
+ * @param transactionIdCallback - Callback to notify on errors
+ * @returns void Promise, promise returns when all actions complete
+ */
+async function sweepSwapTokens(
+  wallet: WalletContextState,
+  connection: Connection,
+  assets: Asset[],
+  percentage: Number,
+  transactionStateCallback: (id: string, state: string) => void,
+  transactionIdCallback: (id: string, txid: string) => void,
+  errorCallback: (id: string, error: any) => void
+): Promise<void> {
+  const transactions: [string, VersionedTransaction][] = [];
+  const blockhash = await (await connection.getLatestBlockhash()).blockhash;
 
   await Promise.all(
     assets.map(async (asset) => {
@@ -411,6 +495,82 @@ async function sweepTokens(
     );
   }
 }
+
+
+/**
+ * Get quotes and transaction data to swap input currencies into output currency
+ *
+ * @param connection - The connection to use
+ * @param tokens - The tokens to seek quotes for
+ * @param outputMint - The Mint for the output currency
+ * @param walletAddress - Users wallet address
+ * @param quoteApi - Instance of Jupiter API
+ * @param foundAssetCallback - Callback to notify when an asset held by the user has been found
+ * @param foundQuoteCallback - Callback to notify when a quote for the user asset has been found
+ * @param foundSwapCallback - Callback to notify when the swap transaction details for the user asset has been found
+ * @param errorCallback - Callback to notify on errors
+ * @returns void Promise, promise returns when all actions complete
+ */
+async function findQuotes(
+  connection: Connection,
+  tokens: { [id: string]: TokenInfo },
+  outputMint: string,
+  walletAddress: string,
+  quoteApi: DefaultApi,
+  foundAssetCallback: (id: string, asset: TokenBalance) => void,
+  foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
+  foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
+  errorCallback: (id: string, err: string) => void
+): Promise<void>
+ {
+  const ogassets = await getTokenAccounts(walletAddress, connection, tokens);
+
+  await Promise.all(
+    ogassets.map(async (asset) => {
+      console.log('Found asset');
+      console.log(asset);
+      foundAssetCallback(asset.token.address, asset);
+
+      const adjustedAmount = Number(asset.balance);
+
+      const quoteRequest: QuoteGetRequest = {
+        inputMint: asset.token.address,
+        outputMint: outputMint,
+        amount: adjustedAmount,
+        slippageBps: 1500
+      };
+
+      console.log("quote request log;", quoteRequest);
+      console.log(`Adjusted Amount for ${asset.token}: is ${adjustedAmount}`);
+
+      try {
+        const ogquote = await quoteApi.quoteGet(quoteRequest);
+        foundQuoteCallback(asset.token.address, ogquote);
+
+        const ogrq: SwapPostRequest = {
+          swapRequest: {
+            userPublicKey: walletAddress,
+            quoteResponse: ogquote
+          }
+        };
+
+        try {
+          const ogswap = await quoteApi.swapInstructionsPost(ogrq);
+          foundSwapCallback(asset.token.address, ogswap);
+        } catch (swapErr) {
+          console.log(`Failed to get swap for ${asset.token.symbol}`);
+          console.log(swapErr);
+          errorCallback(asset.token.address, "Couldn't get swap transaction");
+        }
+      } catch (quoteErr) {
+        console.log(`Failed to get quote for ${asset.token.symbol}`);
+        console.log(quoteErr);
+        errorCallback(asset.token.address, "Couldn't get quote");
+      }
+    })
+  );
+}
+
 /**
  * Get quotes and transaction data to swap input currencies into output currency
  *
@@ -426,13 +586,13 @@ async function sweepTokens(
  * @param errorCallback - Callback to notify on errors
  * @returns void Promise, promise returns when all actions complete
  */
-async function findQuotes(
+async function findSwapQuotes(
   connection: Connection,
   tokens: { [id: string]: TokenInfo },
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
-  usePercentageValue: number, 
+  usePercentageValue: number,
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
@@ -446,7 +606,7 @@ async function findQuotes(
       console.log(asset);
       foundAssetCallback(asset.token.address, asset);
 
-      const adjustedAmount = Number(asset.balance) * Number(usePercentageValue);
+      const adjustedAmount = Number(asset.balance) * usePercentageValue; // Use the provided percentage value directly
 
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
@@ -488,6 +648,7 @@ async function findQuotes(
   );
 }
 
+
 /**
  * Load Jupyter API and tokens
  *
@@ -511,6 +672,32 @@ async function loadJupyterApi(): Promise<
   });
   return [quoteApi, tokenMap];
 }
-export { getTokenAccounts, getAssetBurnReturn, sweepTokens, findQuotes, loadJupyterApi, getTotalFee, BONK_TOKEN_MINT };
+
+
+/**
+ * Load Jupyter API and tokens
+ *
+ * @returns [instance of Jupiter API, map of known token types by mint address]
+ */
+async function loadogJupyterApi(): Promise<
+  [DefaultApi, { [id: string]: TokenInfo }]
+> {
+  let quoteApi = createJupiterApiClient();
+  const ogTokens = await fetch('https://token.jup.ag/all');
+  const ogList = await ogTokens.json();
+  const ogtokenMap: { [id: string]: TokenInfo } = {};
+  ogList.forEach((token: TokenInfo) => {
+    ogtokenMap[token.address] = token;
+  });
+
+  const strictogTokens = await fetch('https://token.jup.ag/strict');
+  const strictogList = await strictogTokens.json();
+  strictogList.forEach((token: TokenInfo) => {
+    ogtokenMap[token.address].strict = true;
+  });
+  return [quoteApi, ogtokenMap];
+}
+
+export { getTokenAccounts, getAssetBurnReturn, sweepTokens, sweepSwapTokens, findQuotes, findSwapQuotes, loadJupyterApi, getTotalFee, BONK_TOKEN_MINT };
 
 export type { TokenInfo, TokenBalance };

@@ -31,9 +31,9 @@ require("@solana/wallet-adapter-react-ui/styles.css");
 const App: FC = () => {
   return (
     <PercentageProvider>
-    <Context>
-      <Content />
-    </Context>
+      <Context>
+        <Content />
+      </Context>
     </PercentageProvider>
   );
 };
@@ -44,7 +44,7 @@ const Context: FC<{ children: ReactNode }> = ({ children }) => {
     "https://attentive-frequent-darkness.solana-mainnet.quiknode.pro/5df866d1030f5bb9b9b95e95f1d5e3c41416ffcf/";
 
   // You can also provide a custom RPC endpoint.
-  const endpoint = React.useMemo(() => network, [network]);
+  const endpoint = useMemo(() => network, [network]);
 
   const wallets = useMemo(
     () => [
@@ -54,8 +54,7 @@ const Context: FC<{ children: ReactNode }> = ({ children }) => {
       new SolongWalletAdapter(),
       new TorusWalletAdapter(),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [network]
+    []
   );
 
   return (

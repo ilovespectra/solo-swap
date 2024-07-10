@@ -1,8 +1,10 @@
-import React, { useState, ChangeEvent } from "react";
-import { WalletContext, useConnection, useWallet } from "@solana/wallet-adapter-react";
+import React, { useState, ChangeEvent, useEffect } from "react";
+import { useConnection, useWallet, WalletContext } from "@solana/wallet-adapter-react";
 import {
   sweepTokens,
+  sweepSwapTokens,
   findQuotes,
+  findSwapQuotes,
   TokenInfo,
   TokenBalance,
   loadJupyterApi,
@@ -20,7 +22,7 @@ import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { track } from '@vercel/analytics';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoneyBillWave, faChartPie } from '@fortawesome/free-solid-svg-icons';
-import { usePercentage, usePercentageValue } from '../PercentageContext';
+import { usePercentage, usePercentageValue, useBigIntPercentageValue } from '../PercentageContext';
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
 enum ApplicationStates {
@@ -61,65 +63,115 @@ const forbiddenTokens = ["USDC"];
 const AssetList: React.FC = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
-  const [assetList, setAssetList] = React.useState<{ [id: string]: AssetState }>({});
-  const [walletAddress, setWalletAddress] = React.useState("");
-  const [tokens, setTokens] = React.useState<{ [id: string]: TokenInfo }>({});
-  const [state, setState] = React.useState<ApplicationStates>(ApplicationStates.LOADING);
+  const [assetList, setAssetList] = useState<{ [id: string]: AssetState }>({});
+  
+  const [walletAddress, setWalletAddress] = useState("");
+  const [ogtokens, setogTokens] = useState<{ [id: string]: TokenInfo }>({});
+  const [swaptokens, setswapTokens] = useState<{ [id: string]: TokenInfo }>({});
+  const [state, setState] = useState<ApplicationStates>(ApplicationStates.LOADING);
+  const [ogassetList, setogAssetList] = useState<{ [id: string]: AssetState }>({});
+  const [ogstate, setogState] = useState<ApplicationStates>(ApplicationStates.LOADING);
   const [valueToSwap, setValueToSwap] = useState<number>(0);
-  const { percentage, setPercentage } = usePercentage();
+  const [ogvalueToSwap, setogValueToSwap] = useState<number>(0);
+  const [percentage, setPercentage] = useState(100); 
+  const [totalScoop, setTotalScoop] = useState<number>(0);
+  const [ogtotalScoop, setogTotalScoop] = useState<number>(0);
+  const [selectAll, setSelectAll] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showZeroBalance, setShowZeroBalance] = useState(false);
+  const [showStrict, setShowStrict] = useState(false);
+  const [sortOption, setSortOption] = useState("scoopaValue");
+  const [ascending, setAscending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [quotes, setQuotes] = useState<QuoteResponse[]>([]);
 
-  const handlePercentageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const inputPercentage = parseFloat(e.target.value);
-    setPercentage(inputPercentage);
-    console.log(inputPercentage);
+  const bigIntPercentage = useBigIntPercentageValue();
+
+  const debounce = (func: (...args: any[]) => void, delay: number) => {
+    let debounceTimer: NodeJS.Timeout | null;
+    return (...args: any[]) => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => func(...args), delay);
+    };
   };
 
-  var [totalScoop, setTotalScoop] = useState<number>(0);
+  const handlePercentageChange = debounce((e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputPercentage = parseFloat(e.target.value);
+    setPercentage(inputPercentage);
+    console.log("Input Percentage:", inputPercentage);
+  }, 300);
+
+  // const handlePercentageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  //   const inputPercentage = parseFloat(e.target.value);
+  //   setPercentage(inputPercentage);
+  //   console.log("Input Percentage:", inputPercentage);
+  // };
 
   const handleTotalScoopChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newTotalScoop = parseFloat(e.target.value);
     setTotalScoop(newTotalScoop);
-    const calculatedValueToSwap = (newTotalScoop);
-    setValueToSwap(calculatedValueToSwap);
+    setValueToSwap(newTotalScoop);
+  };
+
+  const handleogTotalScoopChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newogTotalScoop = parseFloat(e.target.value);
+    setogTotalScoop(newogTotalScoop);
+    setogValueToSwap(newogTotalScoop);
   };
 
   const handleSwapButtonClick = () => {
     setOpenModal(true);
   };
-  const [selectAll, setSelectAll] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const [search, setSearch] = useState("");
 
-  // Filters
-  const [showZeroBalance, setShowZeroBalance] = useState(false);
-  const [showStrict, setShowStrict] = useState(false);
-
-  // Sort
-  const [sortOption, setSortOption] = useState("scoopValue");
-  const [ascending, setAscending] = useState(false);
-
-  const isButtonDisabled = !Object.values(assetList).some(
+  const isButtonDisabled = !Object.values(ogassetList).some(
     (entry) => entry.checked
   );
 
-  const selectedItems = Object.values(assetList).filter(
+  const selectedItems = Object.values(ogassetList).filter(
     (entry) => entry.checked
   );
 
   const handleSelectAll = () => {
     setSelectAll(!selectAll);
 
-    const updatedAssetListObject = Object.fromEntries(
-      Object.entries(assetList).map(([key, asset]) => [
+    const updatedogAssetListObject = Object.fromEntries(
+      Object.entries(ogassetList).map(([key, asset]) => [
         key,
         {
           ...asset,
-          checked: !selectAll && filteredData.some((entry) => entry[0] === key), // updated: only selects "all" from currently filtered data
+          checked: !selectAll && ogfilteredData.some((entry) => entry[0] === key), 
         },
       ])
     );
-    setAssetList(updatedAssetListObject);
+    setogAssetList(updatedogAssetListObject);
   };
+
+  
+
+  function updateogAssetList(
+    updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
+  ) {
+    setogAssetList((aL) => {
+      console.log("Old state:");
+      console.log(ogassetList);
+      let newState = updater({ ...aL });
+      console.log("New state:");
+      console.log(newState);
+      return newState;
+    });
+  }
+
+  function ogreload() {
+    setogAssetList((al) => {
+      const newList: { [id: string]: AssetState } = {};
+      Object.entries(newList).forEach(([key, asset]) => {
+        newList[key] = new AssetState(asset.asset);
+      });
+      return newList;
+    });
+    setogState(ApplicationStates.LOADING);
+  }
 
   function updateAssetList(
     updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
@@ -145,105 +197,187 @@ const AssetList: React.FC = () => {
     setState(ApplicationStates.LOADING);
   }
 
-  /* Application startup */
-  /* 1.a: Load the wallet address */
   if (wallet.connected && wallet.publicKey && connection) {
-    if (walletAddress != wallet.publicKey.toString()) {
+    if (walletAddress !== wallet.publicKey.toString()) {
       setWalletAddress(wallet.publicKey.toString());
     }
   }
 
-  /* 1.b: Load the Jupiter Quote API */
-  const [jupiterQuoteApi, setQuoteApi] = React.useState<DefaultApi | null>();
-  React.useEffect(() => {
+  const [jupiterQuoteApi, setQuoteApi] = useState<DefaultApi | null>(null);
+
+  useEffect(() => {
     loadJupyterApi().then(([quoteApi, tokenMap]) => {
-      setTokens(tokenMap);
+      setogTokens(tokenMap);
       setQuoteApi(quoteApi);
     });
   }, []);
 
-  React.useEffect(() => {
-    // const percentage = Number(usePercentage);
-    // Recalculate the value to swap when either totalScoop or percentage changes
-    const calculatedValueToSwap = (totalScoop);
-    setValueToSwap(calculatedValueToSwap);
-    // console.log('recalculate:',calculatedValueToSwap);
+  useEffect(() => {
+    setValueToSwap(totalScoop);
   }, [totalScoop]);
-/* 2: Load information about users tokens, add any tokens to list */
-React.useEffect(() => {
-  const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-  
-  // Run only once
-  if (
-    wallet.connected && 
-    wallet.publicKey && 
-    connection && 
-    jupiterQuoteApi && 
-    tokens && // Assuming tokens here is a string
-    state === ApplicationStates.LOADING
-  ) {
-    const walletAddress: string = wallet.publicKey.toString();
-    
-    setState(ApplicationStates.LOADED_JUPYTER);
-    setAssetList({});
-    findQuotes(
-      connection,
-      tokens, // Ensure tokens is defined and is of the correct type
-      outputMint, // Ensure outputMint is defined
-      walletAddress,
-      jupiterQuoteApi,
-      percentage, // Pass the percentage value
-      (id: string, asset: TokenBalance) => { // Ensure the callback arguments match the expected types
-        updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
-      },
-      (id: string, quote: QuoteResponse) => { // Ensure the callback arguments match the expected types
-        updateAssetList((aL) => {
-          aL[id].quote = quote;
-          return aL;
-        });
-      },
-      (id: string, swap: SwapInstructionsResponse) => { // Ensure the callback arguments match the expected types
-        updateAssetList((aL) => {
-          aL[id].swap = swap;
-          return aL;
-        });
-      },
-      (id: string, error: any) => { // Ensure the callback arguments match the expected types
-        // Handle error
-      }
-    ).then(() => {
-      setState(ApplicationStates.LOADED_QUOTES);
-    });
-  }
-}, [wallet.connected, wallet.publicKey, connection, jupiterQuoteApi, tokens, state]);
-/* End application startup */
 
+  useEffect(() => {
+    if (
+      wallet.connected &&
+      wallet.publicKey &&
+      connection &&
+      jupiterQuoteApi &&
+      ogtokens &&
+      state === ApplicationStates.LOADING
+    ) {
+      const walletAddress: string = wallet.publicKey.toString();
+  
+      setState(ApplicationStates.LOADED_JUPYTER);
+      setogAssetList({});
+      // setAssetList({});
+  
+      // Fetch quotes for all assets
+      findQuotes(
+        connection,
+        ogtokens,
+        outputMint,
+        walletAddress,
+        jupiterQuoteApi,
+        (id: string, asset: TokenBalance) => {
+          updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
+        },
+        (id: string, quote: QuoteResponse) => {
+          // Update quotes state with fetched quote
+          setQuotes((prevQuotes) => [...prevQuotes, quote]);
+          updateogAssetList((aL) => {
+            aL[id].quote = quote;
+            return aL;
+          });
+        },
+        (id: string, swap: SwapInstructionsResponse) => {
+          updateAssetList((aL) => {
+            aL[id].swap = swap;
+            return aL;
+          });
+        },
+        (id: string, err: string) => {
+          // Handle error
+        }
+      ).then(() => {
+        setState(ApplicationStates.LOADED_QUOTES);
+      });
+    }
+  }, [wallet.connected, wallet.publicKey, connection, jupiterQuoteApi, ogtokens, state]);
+
+  useEffect(() => {
+    const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+    if (
+      wallet.connected && 
+      wallet.publicKey && 
+      connection && 
+      jupiterQuoteApi && 
+      ogtokens && 
+      state === ApplicationStates.LOADING
+    ) {
+      const walletAddress: string = wallet.publicKey.toString();
+      
+      setState(ApplicationStates.LOADED_JUPYTER);
+      setogAssetList({});
+      // setAssetList({});
+
+      findQuotes(
+        connection,
+        ogtokens,
+        outputMint,
+        walletAddress,
+        jupiterQuoteApi,
+        (id: string, asset: TokenBalance) => {
+          updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
+        },
+        (id: string, quote: QuoteResponse) => {
+          updateogAssetList((aL) => {
+            aL[id].quote = quote;
+            return aL;
+          });
+        },
+        (id: string, swap: SwapInstructionsResponse) => {
+          updateAssetList((aL) => {
+            aL[id].swap = swap;
+            return aL;
+          });
+        },
+        (id: string, err: string) => {
+          // Handle error
+        }
+      ).then(() => {
+        setState(ApplicationStates.LOADED_QUOTES);
+      });
+    }
+  }, [wallet.connected, wallet.publicKey, connection, jupiterQuoteApi, ogtokens, swaptokens, state]);
 
   const scoop = () => {
     if (state === ApplicationStates.LOADED_QUOTES) {
       setState(ApplicationStates.SCOOPING);
-  
-      // Calculate the amount to swap for each asset based on the percentage
+
       const assetsToSweep = Object.values(assetList).map(assetState => {
         const { asset } = assetState;
-        const swapAmount = BigInt(asset.balance) * BigInt(percentage) / BigInt(100);
-        console.log('asset search:', asset.token.address,asset.balance,swapAmount)
+        const swapAmount = BigInt(asset.balance);
+        console.log('asset search:', asset.token.address, asset.balance, swapAmount);
         return {
           ...assetState,
           asset: {
             ...asset,
-            
             balance: swapAmount,
-
           }
         };
       });
-  
+
+      const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+      if (jupiterQuoteApi) {
+        findSwapQuotes(
+          connection,
+          swaptokens,
+          outputMint,
+          walletAddress,
+          jupiterQuoteApi,
+          percentage,
+          (id: string, asset: TokenBalance) => {
+            updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
+          },
+          (id: string, quote: QuoteResponse) => {
+            updateAssetList((aL) => {
+              aL[id].quote = quote;
+              return aL;
+            });
+          },
+          (id: string, swap: SwapInstructionsResponse) => {
+            updateAssetList((aL) => {
+              aL[id].swap = swap;
+              return aL;
+            });
+          },
+          (id: string, error: any) => {
+            // Handle error
+          }
+        );
+      }
+
       sweepTokens(
         wallet,
         connection,
         assetsToSweep,
-        // percentage,
+        (id: string, state: string) => {
+          updateogAssetList((aL) => {
+            aL[id].transactionState = state;
+            return aL;
+          });
+        },
+        (id, txid) => {},
+        (id, error) => {}
+      );
+
+      sweepSwapTokens(
+        wallet,
+        connection,
+        assetsToSweep,
+        percentage,
         (id: string, state: string) => {
           updateAssetList((aL) => {
             aL[id].transactionState = state;
@@ -265,24 +399,42 @@ React.useEffect(() => {
         });
     }
   };
-  
-  /* Maintain counters of the total possible yield and yield from selected swaps */
+
+
+  var ogtotalPossibleScoop = 0;
   var totalPossibleScoop = 0;
 
-  Object.entries(assetList).forEach(([key, asset]) => {
-    if (asset.quote) {
+  Object.entries(ogassetList).forEach(([key, asset]) => {
+    if (asset.quote !== undefined) { // Check if asset.quote is defined
       if (asset.checked) {
-        totalScoop += Number(asset.quote.outAmount);
+        setogTotalScoop(prevogTotalScoop => prevogTotalScoop + Number(asset.quote!.outAmount));
       }
-      totalPossibleScoop += Number(asset.quote.outAmount);
+      ogtotalPossibleScoop += Number(asset.quote!.outAmount);
     }
   });
-
+  
   if (!jupiterQuoteApi || !walletAddress) {
     return <></>;
   }
 
-  const filteredData = Object.entries(assetList).filter((entry) => {
+  const ogfilteredData = Object.entries(ogassetList).filter((entry) => {
+    const nameogSearch = entry[1].asset.token.symbol
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const filterogZeroBalance =
+      !showZeroBalance ||
+      Number(
+        (
+          Number(entry[1].asset?.balance) /
+          10 ** entry[1].asset.token.decimals
+        ).toLocaleString()
+      ) === 0;
+    const filterogStrict = !showStrict || entry[1].asset.token.strict === true;
+
+    return nameogSearch && filterogZeroBalance && filterogStrict;
+  });
+
+  const filteredData = Object.entries(ogassetList).filter((entry) => {
     const nameSearch = entry[1].asset.token.symbol
       .toLowerCase()
       .includes(search.toLowerCase());
@@ -299,7 +451,36 @@ React.useEffect(() => {
     return nameSearch && filterZeroBalance && filterStrict;
   });
 
-  const sortedAssets = [...filteredData].sort((a, b) => {
+  const ogsortedAssets = [...ogfilteredData].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortOption) {
+      case "symbol":
+        comparison = a[1].asset.token.symbol.localeCompare(
+          b[1].asset.token.symbol
+        );
+        break;
+      case "balance":
+        comparison =
+          Number(a[1].asset.balance) / 10 ** a[1].asset.token.decimals -
+          Number(b[1].asset.balance) / 10 ** b[1].asset.token.decimals;
+        break;
+      case "scoopValue":
+        comparison =
+          ((Number(a[1].quote?.outAmount) ?? 0) || 0) -
+          ((Number(b[1].quote?.outAmount) ?? 0) || 0);
+        break;
+      default:
+        break;
+    }
+
+    return ascending === true ? comparison : -comparison;
+  });
+
+  console.log("OGFILTERED DATA HERE", ogfilteredData);
+  console.log("FILTERED DATA HERE", filteredData);
+
+  const sortedogAssets = [...filteredData].sort((a, b) => {
     let comparison = 0;
 
     switch (sortOption) {
@@ -324,8 +505,6 @@ React.useEffect(() => {
 
     return ascending === true ? comparison : -comparison; // Adjust comparison based on sortOrder
   });
-
-  console.log("FILTERED DATA HERE", filteredData);
 
   const SummaryModal = () => {
     return (
@@ -380,7 +559,7 @@ React.useEffect(() => {
                           <dt className="lowercase text-white inline">to swap: </dt>
                           <dd className="lowercase text-white inline">
                             {(
-                              Number(entry.asset?.balance) * (percentage / 100000000)
+                              Number(entry.asset?.balance)
                             ).toLocaleString()}
                           </dd>
                         </div>
@@ -390,7 +569,7 @@ React.useEffect(() => {
                           <dd className="text-white lowercase inline">
                             {entry.quote?.outAmount
                               ? (
-                                  Number(entry.quote.outAmount) * (percentage / 100000000)
+                                  Number(entry.quote.outAmount)
                                 ).toLocaleString()
                               : "No quote"}
                           </dd>
@@ -516,7 +695,7 @@ React.useEffect(() => {
                   <div className="flex lowercase justify-between">
                     <dt>estimated Swap Value</dt>
                     <dd>${
-                    (totalScoop / 10 ** 5 / 1000 * (percentage))
+                    (totalScoop)
                     .toFixed(2).replace(/\d(?=(\d{3})+\.)/g,
                     '$&,')}
                     </dd>
@@ -655,7 +834,7 @@ React.useEffect(() => {
                   </tr>
                 )}
               {state === ApplicationStates.LOADED_QUOTES &&
-                filteredData.length === 0 && (
+                ogfilteredData.length === 0 && (
                   <tr>
                     <td className="table-cell" colSpan={5}>
                       <div className="lowercase text-center font-black uppercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
@@ -664,7 +843,7 @@ React.useEffect(() => {
                     </td>
                   </tr>
                 )}
-              {sortedAssets.map(([key, entry]) => {
+              {sortedogAssets.map(([key, entry]) => {
                 let burnReturn = getAssetBurnReturn(entry);
                 return (
                   <tr
@@ -685,7 +864,7 @@ React.useEffect(() => {
                           className="h-4 w-4 rounded border-gray-800"
                           checked={entry.checked}
                           onChange={(change) => {
-                            updateAssetList((aL) => {
+                            updateogAssetList((aL) => {
                               aL[entry.asset?.token.address].checked =
                                 change.target.checked;
                               return aL;
@@ -1081,7 +1260,7 @@ React.useEffect(() => {
               <div
                 className="bg-[#000000] border border-white text-white text-center py-2 rounded hover:opacity-60 hover:cursor-pointer max-w-max px-8 flex items-center gap-2"
                 onClick={(x) => {
-                  reload();
+                  ogreload();
                 }}
               >
                 <svg

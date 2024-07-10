@@ -85,6 +85,7 @@ const AssetList: React.FC = () => {
   const [ascending, setAscending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<QuoteResponse[]>([]);
+  const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
   const bigIntPercentage = useBigIntPercentageValue();
 
@@ -327,8 +328,6 @@ const AssetList: React.FC = () => {
           }
         };
       });
-
-      const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
       if (jupiterQuoteApi) {
         findSwapQuotes(

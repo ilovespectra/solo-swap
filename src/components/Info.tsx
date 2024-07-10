@@ -11,7 +11,7 @@ const Info = () => {
     {
       title: "Select assets for swapping pro rata",
       description:
-        "Review the assets in the list and check any assets you would like to swap, then press swap. Or use swap all",
+        "Review the assets in the list and check any assets you would like to swap, then press swap, Or use swap all",
       image: `/images/2.png`,
     },
     {
@@ -32,14 +32,13 @@ const Info = () => {
     <section className="bg-[#000000] text-white rounded-3xl relative px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 mb-4 shadow-[-10px_10px_20px_5px_rgba(0,0,0,0.4)] z-20 border border-white">
       <div className="max-w-screen-xl">
         <div className="max-w-xl">
-          <h2 className="lowercase text-3xl font-black sm:text-6xl uppercase">
-            Solo Swap
+          <h2 className="lowercase text-3xl font-black sm:text-6xl">
+            solo swap
           </h2>
-          <p><i>[coming soon] don't use yet! it will swap 100% of your selected assets for usdc</i></p>
           <p className="lowercase mt-4 font-semibold tracking-wide">
             In a pro rata swap, each asset represents the same portion as in your portfolio.
             Swap selected assets into $USDC via
-             <a href="https://jup.ag/"> <u>Jupiter swaps.</u></a> <br/>
+             <a href="https://jup.ag/"> <u>Jupiter swaps</u></a> <br/>
              {/* <br/> */}
             {/* <i>A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps.</i> */}
           </p>

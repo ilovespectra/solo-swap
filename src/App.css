@@ -181,3 +181,13 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #2a2a2a; /* dark grey background */
   color: white;
 }
+
+.enter-solo-button {
+  transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+
+.enter-solo-button:hover {
+  transform: scale(1.1);
+  background-color: gray;
+  color: black;
+}

@@ -6,29 +6,22 @@ import {
   PublicKey,
   TransactionMessage,
   TransactionInstruction,
-  AddressLookupTableAccount
-} from '@solana/web3.js';
+  AddressLookupTableAccount,
+} from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
+  createCloseAccountInstruction,
   TOKEN_2022_PROGRAM_ID,
   createHarvestWithheldTokensToMintInstruction,
+  createBurnInstruction,
   createTransferInstruction,
-  getAssociatedTokenAddressSync
-} from '@solana/spl-token';
-import { WalletContextState } from '@solana/wallet-adapter-react';
-import { Buffer } from 'buffer';
-import {
-  SwapInstructionsResponse,
-  DefaultApi,
-  QuoteResponse
-} from '@jup-ag/api';
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
+import { WalletContextState } from "@solana/wallet-adapter-react";
+import { Buffer } from "buffer";
+import { SwapInstructionsResponse, DefaultApi, QuoteResponse } from "@jup-ag/api";
 
-import {
-  QuoteGetRequest,
-  SwapPostRequest,
-  createJupiterApiClient
-} from '@jup-ag/api';
-import { usePercentageValue } from './PercentageContext';
+import { QuoteGetRequest, SwapPostRequest, createJupiterApiClient } from "@jup-ag/api";
 
 interface TokenInfo {
   address: string;
@@ -55,38 +48,18 @@ interface TokenBalance {
   ataId: PublicKey;
 }
 
-interface PercentageContextProps {
-  percentage: number;
-  bigIntPercentage: bigint;
-  setPercentage: (value: number) => void;
-}
+const USDC_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
-const BONK_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-
-const liquidStableTokens = ["mSOL", "USDC", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
-const forbiddenTokens = ["USDT"].concat(liquidStableTokens);
-
-// Removed distributionTargets since no fee will be distributed
-/*
-const distributionTargets: [PublicKey, number][] = [
-  [
-    getAssociatedTokenAddressSync(
-      new PublicKey(BONK_TOKEN_MINT),
-      new PublicKey("2Vi8WzFHAAVNjtAquByvdzzpw8p4MuXhkQyBxs4qSVxw") // bonk fees
-    ),
-    0.22999999999999998 // 0.22999999999999998%
-  ]
-];
-*/
+const liquidStableTokens = ["mSOL", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
+const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
 
 /**
  * Get the total fee amount
  */
 function getTotalFee(): number {
-  // Return 0 since no fee is being applied
-  return 0.0;
+  let totalFee = 0.0;
+  return totalFee;
 }
-
 
 /**
  * Returns the expected outputs of burning an asset
@@ -94,7 +67,12 @@ function getTotalFee(): number {
  * @param asset The asset to calculate returns for
  * @returns Object containing information about return/fees
  */
-function getAssetBurnReturn(asset: Asset): {burnAmount: bigint, bonkAmount: bigint, lamportsAmount: bigint, feeAmount: bigint} {
+function getAssetBurnReturn(asset: Asset): {
+  burnAmount: bigint;
+  bonkAmount: bigint;
+  lamportsAmount: bigint;
+  feeAmount: bigint;
+} {
   var burnAmount: bigint;
   var bonkAmount: bigint;
   var lamportsAmount: bigint;
@@ -113,20 +91,14 @@ function getAssetBurnReturn(asset: Asset): {burnAmount: bigint, bonkAmount: bigi
     lamportsAmount = BigInt(2400000);
   }
 
-  // Remove fee calculation
-  // let totalFee = getTotalFee();
-  // let feeAmount = bonkAmount / BigInt(Math.floor(100 / totalFee));
-  // bonkAmount -= feeAmount;
-
-  // Set feeAmount to 0 since we're removing the fee
   let feeAmount = BigInt(0);
 
   return {
     burnAmount: burnAmount,
     bonkAmount: bonkAmount,
     lamportsAmount: lamportsAmount,
-    feeAmount: feeAmount
-  }
+    feeAmount: feeAmount,
+  };
 }
 
 /**
@@ -141,72 +113,64 @@ function getAssetBurnReturn(asset: Asset): {burnAmount: bigint, bonkAmount: bigi
  */
 async function getTokenAccounts(
   wallet: string,
-  solanaConnection: Connection,
+  connection: Connection,
   tokenList: { [id: string]: TokenInfo }
 ): Promise<TokenBalance[]> {
   const filters: GetProgramAccountsFilter[] = [
     {
-      dataSize: 165
+      dataSize: 165,
     },
     {
       memcmp: {
         offset: 32,
-        bytes: wallet
-      }
-    }
+        bytes: wallet,
+      },
+    },
   ];
-  const accountsOld = await solanaConnection.getParsedProgramAccounts(
-    TOKEN_PROGRAM_ID,
-    { filters: filters }
-  );
+  const accountsOld = await connection.getParsedProgramAccounts(TOKEN_PROGRAM_ID, {
+    filters: filters,
+  });
   const filtersNew: GetProgramAccountsFilter[] = [
     {
-      dataSize: 182
+      dataSize: 182,
     },
     {
       memcmp: {
         offset: 32,
-        bytes: wallet
-      }
-    }
+        bytes: wallet,
+      },
+    },
   ];
-  const accountsNew = await solanaConnection.getParsedProgramAccounts(
-    TOKEN_2022_PROGRAM_ID,
-    { filters: filtersNew }
-  );
+  const accountsNew = await connection.getParsedProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+    filters: filtersNew,
+  });
 
-  console.log(
-    `Found ${accountsNew.length} token account(s) for wallet ${wallet}.`
-  );
+  console.log(`Found ${accountsNew.length} token account(s) for wallet ${wallet}.`);
   var tokens: TokenBalance[] = [];
 
   accountsOld.forEach((account, i) => {
     console.log(account);
     const parsedAccountInfo: any = account.account.data;
-    const mintAddress: string = parsedAccountInfo['parsed']['info']['mint'];
-    if (tokenList[mintAddress] && !forbiddenTokens.includes(tokenList[mintAddress].symbol) ) {
+    const mintAddress: string = parsedAccountInfo["parsed"]["info"]["mint"];
+    if (tokenList[mintAddress] && !forbiddenTokens.includes(tokenList[mintAddress].symbol)) {
       tokens.push({
         token: tokenList[mintAddress],
-        balance: BigInt(
-          parsedAccountInfo['parsed']['info']['tokenAmount']['amount']
-        ),
+        balance: BigInt(parsedAccountInfo["parsed"]["info"]["tokenAmount"]["amount"]),
         programId: TOKEN_PROGRAM_ID,
-        ataId: account.pubkey
+        ataId: account.pubkey,
       });
     }
   });
   accountsNew.forEach((account, i) => {
     console.log(account);
     const parsedAccountInfo: any = account.account.data;
-    const mintAddress: string = parsedAccountInfo['parsed']['info']['mint'];
+    const mintAddress: string = parsedAccountInfo["parsed"]["info"]["mint"];
     if (tokenList[mintAddress]) {
       tokens.push({
         token: tokenList[mintAddress],
-        balance: BigInt(
-          parsedAccountInfo['parsed']['info']['tokenAmount']['amount']
-        ),
+        balance: BigInt(parsedAccountInfo["parsed"]["info"]["tokenAmount"]["amount"]),
         programId: TOKEN_2022_PROGRAM_ID,
-        ataId: account.pubkey
+        ataId: account.pubkey,
       });
     }
   });
@@ -220,9 +184,9 @@ const deserializeInstruction = (instruction: any) => {
     keys: instruction.accounts.map((key: any) => ({
       pubkey: new PublicKey(key.pubkey),
       isSigner: key.isSigner,
-      isWritable: key.isWritable
+      isWritable: key.isWritable,
     })),
-    data: Buffer.from(instruction.data, 'base64')
+    data: Buffer.from(instruction.data, "base64"),
   });
 };
 
@@ -230,17 +194,16 @@ async function getAddressLookupTableAccounts(
   connection: Connection,
   keys: string[]
 ): Promise<AddressLookupTableAccount[]> {
-  const addressLookupTableAccountInfos =
-    await connection.getMultipleAccountsInfo(
-      keys.map((key) => new PublicKey(key))
-    );
+  const addressLookupTableAccountInfos = await connection.getMultipleAccountsInfo(
+    keys.map((key) => new PublicKey(key))
+  );
 
   return addressLookupTableAccountInfos.reduce((acc, accountInfo, index) => {
     const addressLookupTableAddress = keys[index];
     if (accountInfo) {
       const addressLookupTableAccount = new AddressLookupTableAccount({
         key: new PublicKey(addressLookupTableAddress),
-        state: AddressLookupTableAccount.deserialize(accountInfo.data)
+        state: AddressLookupTableAccount.deserialize(accountInfo.data),
       });
       acc.push(addressLookupTableAccount);
     }
@@ -267,8 +230,7 @@ async function buildBurnTransaction(
   wallet: WalletContextState,
   connection: Connection,
   blockhash: string,
-  asset: Asset,
-  percentage = usePercentageValue,
+  asset: Asset
 ): Promise<VersionedTransaction | null> {
   if (asset.checked && wallet.publicKey) {
     var instructions: TransactionInstruction[] = [];
@@ -294,58 +256,28 @@ async function buildBurnTransaction(
       const addressLookupTableAccounts: AddressLookupTableAccount[] = [];
 
       addressLookupTableAccounts.push(
-        ...(await getAddressLookupTableAccounts(
-          connection,
-          asset.swap.addressLookupTableAddresses
-        ))
+        ...(await getAddressLookupTableAccounts(connection, asset.swap.addressLookupTableAddresses))
       );
       lookup = addressLookupTableAccounts;
     }
 
-    // Removed burn amount and burn instruction section
-
-    // Removed harvest fees section
-
-    // Removed close account section
-
-    // Removed the fee distribution section since no fee will be applied
-    /*
-    distributionTargets.forEach(([target, sharePercent]) => {
-      if (
-        wallet.publicKey && asset.quote && 
-        (BigInt(asset.quote.outAmount) / BigInt(Math.floor(100 / sharePercent))) > 0n
-      ) {
-        const transferInstruction = createTransferInstruction(
-          getAssociatedTokenAddressSync(
-            new PublicKey(BONK_TOKEN_MINT),
-            wallet.publicKey
-          ),
-          target,
-          wallet.publicKey,
-          (BigInt(asset.quote.outAmount) / BigInt(Math.floor(100 / sharePercent)))
-        );
-        instructions.push(transferInstruction);
-      }
-    });
-    */
+    // let burnAmount;
 
     console.log(instructions);
     if (instructions.length > 0) {
       const message = new TransactionMessage({
         payerKey: wallet.publicKey,
         recentBlockhash: blockhash,
-        instructions: instructions
+        instructions: instructions,
       }).compileToV0Message(lookup);
       const tx = new VersionedTransaction(message);
-      console.log('Created transaction');
+      console.log("Created transaction");
       console.log(tx);
       return tx;
     }
   }
   return null;
 }
-
-
 
 /**
  * Sweeps a set of assets, signing and executing a set of previously determined transactions to swap them into the target currency
@@ -362,28 +294,46 @@ async function sweepTokens(
   wallet: WalletContextState,
   connection: Connection,
   assets: Asset[],
+  quoteApi: DefaultApi,
+  percentage: number,
   transactionStateCallback: (id: string, state: string) => void,
   transactionIdCallback: (id: string, txid: string) => void,
   errorCallback: (id: string, error: any) => void
 ): Promise<void> {
   const transactions: [string, VersionedTransaction][] = [];
-  const blockhash = await (await connection.getLatestBlockhash()).blockhash;
-  
-  await Promise.all(
+  const blockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  await Promise.allSettled(
     assets.map(async (asset) => {
-      const tx = await buildBurnTransaction(
-        wallet,
-        connection,
-        blockhash,
-        asset
-      );
+      const quoteRequest: QuoteGetRequest = {
+        inputMint: asset.asset.token.address,
+        outputMint: USDC_TOKEN_MINT,
+        amount: (Number(asset.asset.balance) / 100) * percentage, // Casting this to number can discard precision...
+        slippageBps: 1500,
+      };
+      const quote = await quoteApi.quoteGet(quoteRequest);
+      console.log("quote:", quote);
+
+      const rq: SwapPostRequest = {
+        swapRequest: {
+          userPublicKey: wallet.publicKey!.toBase58(),
+          quoteResponse: quote,
+        },
+      };
+      const swap = await quoteApi.swapInstructionsPost(rq);
+      console.log("swap:", swap);
+
+      const tx = await buildBurnTransaction(wallet, connection, blockhash, {
+        ...asset,
+        swap: swap,
+      });
       if (tx) {
         transactions.push([asset.asset.token.address, tx]);
       }
     })
   );
 
-  console.log('Transactions');
+  console.log("Transactions");
   console.log(transactions);
 
   if (wallet.signAllTransactions) {
@@ -391,14 +341,14 @@ async function sweepTokens(
       transactions.map(([id, transaction]) => transaction)
     );
 
-    console.log('Signed transactions:');
+    console.log("Signed transactions:");
     console.log(signedTransactions);
     console.log(transactions);
 
     await Promise.all(
       signedTransactions.map(async (transaction, i) => {
         const assetId = transactions[i][0];
-        transactionStateCallback(assetId, 'Swapping pro rata');
+        transactionStateCallback(assetId, "Scooping");
 
         try {
           const result = await sendAndConfirmRawTransaction(
@@ -406,96 +356,19 @@ async function sweepTokens(
             Buffer.from(transaction.serialize()),
             {}
           );
-          console.log('Transaction Success!');
-          transactionStateCallback(assetId, 'Swapped');
+          console.log("Transaction Success!");
+          transactionStateCallback(assetId, "Scooped");
           transactionIdCallback(assetId, result);
         } catch (err) {
-          console.log('Transaction failed!');
+          console.log("Transaction failed!");
           console.log(err);
-          transactionStateCallback(assetId, 'Error');
+          transactionStateCallback(assetId, "Error");
           errorCallback(assetId, err);
         }
       })
     );
   }
 }
-
-
-
-/**
- * Sweeps a set of assets, signing and executing a set of previously determined transactions to swap them into the target currency
- *
- * @param wallet - The users public key as a string
- * @param connection - The connection to use
- * @param assets - List of the assets to be swept
- * @param transactionStateCallback - Callback to notify as a transactions state updates
- * @param transactionIdCallback - Callback to notify when a transaction has an ID
- * @param transactionIdCallback - Callback to notify on errors
- * @returns void Promise, promise returns when all actions complete
- */
-async function sweepSwapTokens(
-  wallet: WalletContextState,
-  connection: Connection,
-  assets: Asset[],
-  percentage: Number,
-  transactionStateCallback: (id: string, state: string) => void,
-  transactionIdCallback: (id: string, txid: string) => void,
-  errorCallback: (id: string, error: any) => void
-): Promise<void> {
-  const transactions: [string, VersionedTransaction][] = [];
-  const blockhash = await (await connection.getLatestBlockhash()).blockhash;
-
-  await Promise.all(
-    assets.map(async (asset) => {
-      const tx = await buildBurnTransaction(
-        wallet,
-        connection,
-        blockhash,
-        asset
-      );
-      if (tx) {
-        transactions.push([asset.asset.token.address, tx]);
-      }
-    })
-  );
-
-  console.log('Transactions');
-  console.log(transactions);
-
-  if (wallet.signAllTransactions) {
-    const signedTransactions = await wallet.signAllTransactions(
-      transactions.map(([id, transaction]) => transaction)
-    );
-
-    console.log('Signed transactions:');
-    console.log(signedTransactions);
-    console.log(transactions);
-
-    await Promise.all(
-      signedTransactions.map(async (transaction, i) => {
-        const assetId = transactions[i][0];
-        transactionStateCallback(assetId, 'Swapping pro rata');
-
-        try {
-          const result = await sendAndConfirmRawTransaction(
-            connection,
-            Buffer.from(transaction.serialize()),
-            {}
-          );
-          console.log('Transaction Success!');
-          transactionStateCallback(assetId, 'Swapped');
-          transactionIdCallback(assetId, result);
-        } catch (err) {
-          console.log('Transaction failed!');
-          console.log(err);
-          transactionStateCallback(assetId, 'Error');
-          errorCallback(assetId, err);
-        }
-      })
-    );
-  }
-}
-
 
 /**
  * Get quotes and transaction data to swap input currencies into output currency
@@ -503,8 +376,8 @@ async function sweepSwapTokens(
  * @param connection - The connection to use
  * @param tokens - The tokens to seek quotes for
  * @param outputMint - The Mint for the output currency
- * @param walletAddress - Users wallet address
- * @param quoteApi - Instance of Jupiter API
+ * @param walletAddress - Callback to notify when a transaction has an ID
+ * @param quoteApi - Users wallet address
  * @param foundAssetCallback - Callback to notify when an asset held by the user has been found
  * @param foundQuoteCallback - Callback to notify when a quote for the user asset has been found
  * @param foundSwapCallback - Callback to notify when the swap transaction details for the user asset has been found
@@ -517,82 +390,7 @@ async function findQuotes(
   outputMint: string,
   walletAddress: string,
   quoteApi: DefaultApi,
-  foundAssetCallback: (id: string, asset: TokenBalance) => void,
-  foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
-  foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
-  errorCallback: (id: string, err: string) => void
-): Promise<void>
- {
-  const ogassets = await getTokenAccounts(walletAddress, connection, tokens);
-
-  await Promise.all(
-    ogassets.map(async (asset) => {
-      console.log('Found asset');
-      console.log(asset);
-      foundAssetCallback(asset.token.address, asset);
-
-      const adjustedAmount = Number(asset.balance);
-
-      const quoteRequest: QuoteGetRequest = {
-        inputMint: asset.token.address,
-        outputMint: outputMint,
-        amount: adjustedAmount,
-        slippageBps: 1500
-      };
-
-      console.log("quote request log;", quoteRequest);
-      console.log(`Adjusted Amount for ${asset.token}: is ${adjustedAmount}`);
-
-      try {
-        const ogquote = await quoteApi.quoteGet(quoteRequest);
-        foundQuoteCallback(asset.token.address, ogquote);
-
-        const ogrq: SwapPostRequest = {
-          swapRequest: {
-            userPublicKey: walletAddress,
-            quoteResponse: ogquote
-          }
-        };
-
-        try {
-          const ogswap = await quoteApi.swapInstructionsPost(ogrq);
-          foundSwapCallback(asset.token.address, ogswap);
-        } catch (swapErr) {
-          console.log(`Failed to get swap for ${asset.token.symbol}`);
-          console.log(swapErr);
-          errorCallback(asset.token.address, "Couldn't get swap transaction");
-        }
-      } catch (quoteErr) {
-        console.log(`Failed to get quote for ${asset.token.symbol}`);
-        console.log(quoteErr);
-        errorCallback(asset.token.address, "Couldn't get quote");
-      }
-    })
-  );
-}
-
-/**
- * Get quotes and transaction data to swap input currencies into output currency
- *
- * @param connection - The connection to use
- * @param tokens - The tokens to seek quotes for
- * @param outputMint - The Mint for the output currency
- * @param walletAddress - Users wallet address
- * @param quoteApi - Instance of Jupiter API
- * @param usePercentageValue - User-inputted percentage to calculate quote amount
- * @param foundAssetCallback - Callback to notify when an asset held by the user has been found
- * @param foundQuoteCallback - Callback to notify when a quote for the user asset has been found
- * @param foundSwapCallback - Callback to notify when the swap transaction details for the user asset has been found
- * @param errorCallback - Callback to notify on errors
- * @returns void Promise, promise returns when all actions complete
- */
-async function findSwapQuotes(
-  connection: Connection,
-  tokens: { [id: string]: TokenInfo },
-  outputMint: string,
-  walletAddress: string,
-  quoteApi: DefaultApi,
-  usePercentageValue: number,
+  percentage: number,
   foundAssetCallback: (id: string, asset: TokenBalance) => void,
   foundQuoteCallback: (id: string, quote: QuoteResponse) => void,
   foundSwapCallback: (id: string, swap: SwapInstructionsResponse) => void,
@@ -600,45 +398,46 @@ async function findSwapQuotes(
 ): Promise<void> {
   const assets = await getTokenAccounts(walletAddress, connection, tokens);
 
-  await Promise.all(
+  await Promise.allSettled(
     assets.map(async (asset) => {
-      console.log('Found asset');
+      // Skip assets with no balance
+      if (asset.balance == 0n) {
+        return;
+      }
+      console.log("Found asset");
       console.log(asset);
-      foundAssetCallback(asset.token.address, asset);
-
-      const adjustedAmount = Number(asset.balance) * usePercentageValue; // Use the provided percentage value directly
 
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
         outputMint: outputMint,
-        amount: adjustedAmount,
-        slippageBps: 1500
+        amount: (Number(asset.balance) / 100) * percentage, // Casting this to number can discard precision...
+        slippageBps: 1500,
       };
 
-      console.log("quote request log;", quoteRequest);
-      console.log(`Adjusted Amount for ${asset.token}: is ${adjustedAmount}`);
+      console.log(`quote request`, quoteRequest);
 
       try {
         const quote = await quoteApi.quoteGet(quoteRequest);
+        // add asset to list of assets only if quote is found
+        foundAssetCallback(asset.token.address, asset);
         foundQuoteCallback(asset.token.address, quote);
 
-        const rq: SwapPostRequest = {
-          swapRequest: {
-            userPublicKey: walletAddress,
-            quoteResponse: quote
-          }
-        };
+        // // disable swap api since it's not needed before scooping
+        // const rq: SwapPostRequest = {
+        //   swapRequest: {
+        //     userPublicKey: walletAddress,
+        //     quoteResponse: quote,
+        //   },
+        // };
 
-        console.log('Percentage from usePercentageValue:', usePercentageValue);
-
-        try {
-          const swap = await quoteApi.swapInstructionsPost(rq);
-          foundSwapCallback(asset.token.address, swap);
-        } catch (swapErr) {
-          console.log(`Failed to get swap for ${asset.token.symbol}`);
-          console.log(swapErr);
-          errorCallback(asset.token.address, "Couldn't get swap transaction");
-        }
+        // try {
+        //   const swap = await quoteApi.swapInstructionsPost(rq);
+        //   foundSwapCallback(asset.token.address, swap);
+        // } catch (swapErr) {
+        //   console.log(`Failed to get swap for ${asset.token.symbol}`);
+        //   console.log(swapErr);
+        //   errorCallback(asset.token.address, "Couldn't get swap transaction");
+        // }
       } catch (quoteErr) {
         console.log(`Failed to get quote for ${asset.token.symbol}`);
         console.log(quoteErr);
@@ -648,24 +447,21 @@ async function findSwapQuotes(
   );
 }
 
-
 /**
  * Load Jupyter API and tokens
  *
  * @returns [instance of Jupiter API, map of known token types by mint address]
  */
-async function loadJupyterApi(): Promise<
-  [DefaultApi, { [id: string]: TokenInfo }]
-> {
+async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo }]> {
   let quoteApi = createJupiterApiClient();
-  const allTokens = await fetch('https://token.jup.ag/all');
+  const allTokens = await fetch("https://token.jup.ag/all");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};
   allList.forEach((token: TokenInfo) => {
     tokenMap[token.address] = token;
   });
 
-  const strictTokens = await fetch('https://token.jup.ag/strict');
+  const strictTokens = await fetch("https://token.jup.ag/strict");
   const strictList = await strictTokens.json();
   strictList.forEach((token: TokenInfo) => {
     tokenMap[token.address].strict = true;
@@ -673,31 +469,13 @@ async function loadJupyterApi(): Promise<
   return [quoteApi, tokenMap];
 }
 
-
-/**
- * Load Jupyter API and tokens
- *
- * @returns [instance of Jupiter API, map of known token types by mint address]
- */
-async function loadogJupyterApi(): Promise<
-  [DefaultApi, { [id: string]: TokenInfo }]
-> {
-  let quoteApi = createJupiterApiClient();
-  const ogTokens = await fetch('https://token.jup.ag/all');
-  const ogList = await ogTokens.json();
-  const ogtokenMap: { [id: string]: TokenInfo } = {};
-  ogList.forEach((token: TokenInfo) => {
-    ogtokenMap[token.address] = token;
-  });
-
-  const strictogTokens = await fetch('https://token.jup.ag/strict');
-  const strictogList = await strictogTokens.json();
-  strictogList.forEach((token: TokenInfo) => {
-    ogtokenMap[token.address].strict = true;
-  });
-  return [quoteApi, ogtokenMap];
-}
-
-export { getTokenAccounts, getAssetBurnReturn, sweepTokens, sweepSwapTokens, findQuotes, findSwapQuotes, loadJupyterApi, getTotalFee, BONK_TOKEN_MINT };
-
+export {
+  getTokenAccounts,
+  getAssetBurnReturn,
+  sweepTokens,
+  findQuotes,
+  loadJupyterApi,
+  getTotalFee,
+  USDC_TOKEN_MINT,
+};
 export type { TokenInfo, TokenBalance };

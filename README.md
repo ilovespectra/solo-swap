@@ -2,7 +2,7 @@
 
 _this is a rewrap of the [bonk pooper scooper](https://github.com/BonkLabs/pooperscooper). WIP_
 
-solo: swap is a pro-rata token swapper utilizing jupiter agrigators- allowing the user to swap from the total value of selected tokens without impacting allocation. this allows you to sell a bit of selected assets relative to the ratio of your holdings, keeping your portfolio percentages intact. 
+solo: swap is a pro-rata token swapper utilizing jupiter aggregators- allowing the user to swap from the total value of selected tokens without impacting allocation. this allows you to sell a bit of selected assets relative to the ratio of your holdings, keeping your portfolio percentages intact. 
 
 - a basic user interface and usage is implemented in `AssetList.tsx`.
 - core logic which performs the application action is in `scooper.ts`

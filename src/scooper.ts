@@ -308,7 +308,7 @@ async function sweepTokens(
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.asset.token.address,
         outputMint: USDC_TOKEN_MINT,
-        amount: (Number(asset.asset.balance) / 100) * percentage, // Casting this to number can discard precision...
+        amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
         slippageBps: 1500,
       };
       const quote = await quoteApi.quoteGet(quoteRequest);
@@ -410,7 +410,7 @@ async function findQuotes(
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
         outputMint: outputMint,
-        amount: (Number(asset.balance) / 100) * percentage, // Casting this to number can discard precision...
+        amount: Math.floor((Number(asset.balance) / 100) * percentage), // Casting this to number can discard precision...
         slippageBps: 1500,
       };
 

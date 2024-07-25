@@ -2,27 +2,21 @@ import React, { useState, ChangeEvent, useEffect } from "react";
 import { useConnection, useWallet, WalletContext } from "@solana/wallet-adapter-react";
 import {
   sweepTokens,
-  sweepSwapTokens,
   findQuotes,
-  findSwapQuotes,
   TokenInfo,
   TokenBalance,
   loadJupyterApi,
-  BONK_TOKEN_MINT,
+  USDC_TOKEN_MINT,
   getAssetBurnReturn,
 } from "../scooper";
-import {
-  DefaultApi,
-  SwapInstructionsResponse,
-  QuoteResponse,
-} from "@jup-ag/api";
+import { DefaultApi, SwapInstructionsResponse, QuoteResponse } from "@jup-ag/api";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { track } from '@vercel/analytics';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMoneyBillWave, faChartPie } from '@fortawesome/free-solid-svg-icons';
-import { usePercentage, usePercentageValue, useBigIntPercentageValue } from '../PercentageContext';
+import { track } from "@vercel/analytics";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMoneyBillWave, faChartPie } from "@fortawesome/free-solid-svg-icons";
+import { usePercentage, usePercentageValue, useBigIntPercentageValue } from "../PercentageContext";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
 enum ApplicationStates {
@@ -38,6 +32,7 @@ class AssetState {
   quote?: QuoteResponse;
   swap?: SwapInstructionsResponse;
   checked?: boolean;
+  usdPrice?: number;
   transactionState?: string;
   transactionId?: string;
 
@@ -63,116 +58,45 @@ const forbiddenTokens = ["USDC"];
 const AssetList: React.FC = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
-  const [assetList, setAssetList] = useState<{ [id: string]: AssetState }>({});
-  
-  const [walletAddress, setWalletAddress] = useState("");
-  const [ogtokens, setogTokens] = useState<{ [id: string]: TokenInfo }>({});
-  const [swaptokens, setswapTokens] = useState<{ [id: string]: TokenInfo }>({});
-  const [state, setState] = useState<ApplicationStates>(ApplicationStates.LOADING);
-  const [ogassetList, setogAssetList] = useState<{ [id: string]: AssetState }>({});
-  const [ogstate, setogState] = useState<ApplicationStates>(ApplicationStates.LOADING);
-  const [valueToSwap, setValueToSwap] = useState<number>(0);
-  const [ogvalueToSwap, setogValueToSwap] = useState<number>(0);
-  const [percentage, setPercentage] = useState(100); 
-  const [totalScoop, setTotalScoop] = useState<number>(0);
-  const [ogtotalScoop, setogTotalScoop] = useState<number>(0);
+  const [assetList, setAssetList] = React.useState<{
+    [id: string]: AssetState;
+  }>({});
+  const [walletAddress, setWalletAddress] = React.useState("");
+  const [tokens, setTokens] = React.useState<{ [id: string]: TokenInfo }>({});
+  const [state, setState] = React.useState<ApplicationStates>(ApplicationStates.LOADING);
   const [selectAll, setSelectAll] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [percentage, setPercentage] = useState(100);
+
+  // Filters
   const [showZeroBalance, setShowZeroBalance] = useState(false);
   const [showStrict, setShowStrict] = useState(false);
-  const [sortOption, setSortOption] = useState("scoopaValue");
-  const [ascending, setAscending] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [quotes, setQuotes] = useState<QuoteResponse[]>([]);
-  const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
-  const bigIntPercentage = useBigIntPercentageValue();
+  // Sort
+  const [sortOption, setSortOption] = useState("");
+  const [ascending, setAscending] = useState(true);
 
-  const debounce = (func: (...args: any[]) => void, delay: number) => {
-    let debounceTimer: NodeJS.Timeout | null;
-    return (...args: any[]) => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => func(...args), delay);
-    };
-  };
+  const isButtonDisabled = !Object.values(assetList).some((entry) => entry.checked);
 
-  const handlePercentageChange = debounce((e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputPercentage = parseFloat(e.target.value);
-    setPercentage(inputPercentage);
-    console.log("Input Percentage:", inputPercentage);
-  }, 300);
-
-  // const handlePercentageChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   const inputPercentage = parseFloat(e.target.value);
-  //   setPercentage(inputPercentage);
-  //   console.log("Input Percentage:", inputPercentage);
-  // };
-
-  const handleTotalScoopChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newTotalScoop = parseFloat(e.target.value);
-    setTotalScoop(newTotalScoop);
-    setValueToSwap(newTotalScoop);
-  };
-
-  const handleogTotalScoopChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newogTotalScoop = parseFloat(e.target.value);
-    setogTotalScoop(newogTotalScoop);
-    setogValueToSwap(newogTotalScoop);
-  };
-
-  const handleSwapButtonClick = () => {
-    setOpenModal(true);
-  };
-
-  const isButtonDisabled = !Object.values(ogassetList).some(
-    (entry) => entry.checked
-  );
-
-  const selectedItems = Object.values(ogassetList).filter(
-    (entry) => entry.checked
-  );
+  const selectedItems = Object.values(assetList).filter((entry) => entry.checked);
 
   const handleSelectAll = () => {
     setSelectAll(!selectAll);
 
-    const updatedogAssetListObject = Object.fromEntries(
-      Object.entries(ogassetList).map(([key, asset]) => [
+    const updatedAssetListObject = Object.fromEntries(
+      Object.entries(assetList).map(([key, asset]) => [
         key,
         {
           ...asset,
-          checked: !selectAll && ogfilteredData.some((entry) => entry[0] === key), 
+          checked:
+            !selectAll && filteredData.some((entry) => entry[0] === key) && !cannotScoop(asset), // updated: only selects "all" from currently filtered data
         },
       ])
     );
-    setogAssetList(updatedogAssetListObject);
+
+    setAssetList(updatedAssetListObject);
   };
-
-  
-
-  function updateogAssetList(
-    updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
-  ) {
-    setogAssetList((aL) => {
-      console.log("Old state:");
-      console.log(ogassetList);
-      let newState = updater({ ...aL });
-      console.log("New state:");
-      console.log(newState);
-      return newState;
-    });
-  }
-
-  function ogreload() {
-    setogAssetList((al) => {
-      const newList: { [id: string]: AssetState } = {};
-      Object.entries(newList).forEach(([key, asset]) => {
-        newList[key] = new AssetState(asset.asset);
-      });
-      return newList;
-    });
-    setogState(ApplicationStates.LOADING);
-  }
 
   function updateAssetList(
     updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
@@ -198,188 +122,74 @@ const AssetList: React.FC = () => {
     setState(ApplicationStates.LOADING);
   }
 
+  /* Application startup */
+  /* 1.a: Load the wallet address */
   if (wallet.connected && wallet.publicKey && connection) {
-    if (walletAddress !== wallet.publicKey.toString()) {
+    if (walletAddress != wallet.publicKey.toString()) {
       setWalletAddress(wallet.publicKey.toString());
     }
   }
 
-  const [jupiterQuoteApi, setQuoteApi] = useState<DefaultApi | null>(null);
-
-  useEffect(() => {
+  /* 1.b: Load the Jupiter Quote API */
+  const [jupiterQuoteApi, setQuoteApi] = React.useState<DefaultApi | null>();
+  React.useEffect(() => {
     loadJupyterApi().then(([quoteApi, tokenMap]) => {
-      setogTokens(tokenMap);
+      setTokens(tokenMap);
       setQuoteApi(quoteApi);
     });
   }, []);
 
-  useEffect(() => {
-    setValueToSwap(totalScoop);
-  }, [totalScoop]);
-
-  useEffect(() => {
-    if (
-      wallet.connected &&
-      wallet.publicKey &&
-      connection &&
-      jupiterQuoteApi &&
-      ogtokens &&
-      state === ApplicationStates.LOADING
-    ) {
-      const walletAddress: string = wallet.publicKey.toString();
-  
+  /* 2: Load information about users tokens, add any tokens to list */
+  React.useEffect(() => {
+    // Run only once
+    if (walletAddress && jupiterQuoteApi && tokens && state == ApplicationStates.LOADING) {
       setState(ApplicationStates.LOADED_JUPYTER);
-      setogAssetList({});
-      // setAssetList({});
-  
-      // Fetch quotes for all assets
+      setAssetList({});
+      console.log("Loading assets for wallet: " + walletAddress);
       findQuotes(
         connection,
-        ogtokens,
-        outputMint,
+        tokens,
+        USDC_TOKEN_MINT,
         walletAddress,
         jupiterQuoteApi,
-        (id: string, asset: TokenBalance) => {
+        percentage,
+        (id, asset) => {
           updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
         },
-        (id: string, quote: QuoteResponse) => {
-          // Update quotes state with fetched quote
-          setQuotes((prevQuotes) => [...prevQuotes, quote]);
-          updateogAssetList((aL) => {
+        (id, quote) => {
+          updateAssetList((aL) => {
             aL[id].quote = quote;
             return aL;
           });
         },
-        (id: string, swap: SwapInstructionsResponse) => {
+        (id, swap) => {
           updateAssetList((aL) => {
             aL[id].swap = swap;
             return aL;
           });
         },
-        (id: string, err: string) => {
-          // Handle error
-        }
+        (id, error) => {}
       ).then(() => {
         setState(ApplicationStates.LOADED_QUOTES);
       });
     }
-  }, [wallet.connected, wallet.publicKey, connection, jupiterQuoteApi, ogtokens, state]);
+  }, [walletAddress, jupiterQuoteApi, tokens, state]);
+  /* End application startup */
 
-  useEffect(() => {
-    const outputMint: string = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-
-    if (
-      wallet.connected && 
-      wallet.publicKey && 
-      connection && 
-      jupiterQuoteApi && 
-      ogtokens && 
-      state === ApplicationStates.LOADING
-    ) {
-      const walletAddress: string = wallet.publicKey.toString();
-      
-      setState(ApplicationStates.LOADED_JUPYTER);
-      setogAssetList({});
-      // setAssetList({});
-
-      findQuotes(
-        connection,
-        ogtokens,
-        outputMint,
-        walletAddress,
-        jupiterQuoteApi,
-        (id: string, asset: TokenBalance) => {
-          updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
-        },
-        (id: string, quote: QuoteResponse) => {
-          updateogAssetList((aL) => {
-            aL[id].quote = quote;
-            return aL;
-          });
-        },
-        (id: string, swap: SwapInstructionsResponse) => {
-          updateAssetList((aL) => {
-            aL[id].swap = swap;
-            return aL;
-          });
-        },
-        (id: string, err: string) => {
-          // Handle error
-        }
-      ).then(() => {
-        setState(ApplicationStates.LOADED_QUOTES);
-      });
-    }
-  }, [wallet.connected, wallet.publicKey, connection, jupiterQuoteApi, ogtokens, swaptokens, state]);
-
+  /* Scoop button callback, clean all the tokens! */
   const scoop = () => {
-    if (state === ApplicationStates.LOADED_QUOTES) {
+    // Run only once
+    if (state == ApplicationStates.LOADED_QUOTES) {
       setState(ApplicationStates.SCOOPING);
-
-      const assetsToSweep = Object.values(assetList).map(assetState => {
-        const { asset } = assetState;
-        const swapAmount = BigInt(asset.balance);
-        console.log('asset search:', asset.token.address, asset.balance, swapAmount);
-        return {
-          ...assetState,
-          asset: {
-            ...asset,
-            balance: swapAmount,
-          }
-        };
-      });
-
-      if (jupiterQuoteApi) {
-        findSwapQuotes(
-          connection,
-          swaptokens,
-          outputMint,
-          walletAddress,
-          jupiterQuoteApi,
-          percentage,
-          (id: string, asset: TokenBalance) => {
-            updateAssetList((s) => ({ ...s, [id]: new AssetState(asset) }));
-          },
-          (id: string, quote: QuoteResponse) => {
-            updateAssetList((aL) => {
-              aL[id].quote = quote;
-              return aL;
-            });
-          },
-          (id: string, swap: SwapInstructionsResponse) => {
-            updateAssetList((aL) => {
-              aL[id].swap = swap;
-              return aL;
-            });
-          },
-          (id: string, error: any) => {
-            // Handle error
-          }
-        );
-      }
-
       sweepTokens(
         wallet,
         connection,
-        assetsToSweep,
-        (id: string, state: string) => {
-          updateogAssetList((aL) => {
-            aL[id].transactionState = state;
-            return aL;
-          });
-        },
-        (id, txid) => {},
-        (id, error) => {}
-      );
-
-      sweepSwapTokens(
-        wallet,
-        connection,
-        assetsToSweep,
+        Object.values(assetList),
+        jupiterQuoteApi!,
         percentage,
         (id: string, state: string) => {
           updateAssetList((aL) => {
-            aL[id].transactionState = state;
+            assetList[id].transactionState = state;
             return aL;
           });
         },
@@ -388,76 +198,56 @@ const AssetList: React.FC = () => {
       )
         .then(() => {
           setState(ApplicationStates.SCOOPED);
-          track('Swapped');
+          track("Scooped");
         })
         .catch((err) => {
           const notify = () => toast.error("User rejected transaction!");
           notify();
-          console.log("Error signing for swap!" + err);
+          console.log("Error signing for scoop!" + err);
           setState(ApplicationStates.LOADED_QUOTES);
         });
     }
   };
 
-
-  var ogtotalPossibleScoop = 0;
+  /* Maintain counters of the total possible yield and yield from selected swaps */
   var totalPossibleScoop = 0;
+  var totalScoop = 0;
 
-  Object.entries(ogassetList).forEach(([key, asset]) => {
-    if (asset.quote !== undefined) { // Check if asset.quote is defined
+  Object.entries(assetList).forEach(([key, asset]) => {
+    if (asset.quote) {
       if (asset.checked) {
-        setogTotalScoop(prevogTotalScoop => prevogTotalScoop + Number(asset.quote!.outAmount));
+        totalScoop += Number(asset.quote.outAmount);
       }
-      ogtotalPossibleScoop += Number(asset.quote!.outAmount);
+      totalPossibleScoop += Number(asset.quote.outAmount);
     }
   });
-  
+
   if (!jupiterQuoteApi || !walletAddress) {
     return <></>;
   }
 
-  const ogfilteredData = Object.entries(ogassetList).filter((entry) => {
-    const nameogSearch = entry[1].asset.token.symbol
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const filterogZeroBalance =
-      !showZeroBalance ||
-      Number(
-        (
-          Number(entry[1].asset?.balance) /
-          10 ** entry[1].asset.token.decimals
-        ).toLocaleString()
-      ) === 0;
-    const filterogStrict = !showStrict || entry[1].asset.token.strict === true;
-
-    return nameogSearch && filterogZeroBalance && filterogStrict;
-  });
-
-  const filteredData = Object.entries(ogassetList).filter((entry) => {
-    const nameSearch = entry[1].asset.token.symbol
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const filteredData = Object.entries(assetList).filter((entry) => {
+    const nameSearch = entry[1].asset.token.symbol.toLowerCase().includes(search.toLowerCase());
     const filterZeroBalance =
       !showZeroBalance ||
       Number(
-        (
-          Number(entry[1].asset?.balance) /
-          10 ** entry[1].asset.token.decimals
-        ).toLocaleString()
+        (Number(entry[1].asset?.balance) / 10 ** entry[1].asset.token.decimals).toLocaleString()
       ) === 0;
     const filterStrict = !showStrict || entry[1].asset.token.strict === true;
 
     return nameSearch && filterZeroBalance && filterStrict;
   });
 
-  const ogsortedAssets = [...ogfilteredData].sort((a, b) => {
+  const cannotScoop = (entry: any) => {
+    return entry.asset.balance > 0 && !entry.swap && entry.usdPrice > 1;
+  };
+
+  const sortedAssets = [...filteredData].sort((a, b) => {
     let comparison = 0;
 
     switch (sortOption) {
       case "symbol":
-        comparison = a[1].asset.token.symbol.localeCompare(
-          b[1].asset.token.symbol
-        );
+        comparison = a[1].asset.token.symbol.localeCompare(b[1].asset.token.symbol);
         break;
       case "balance":
         comparison =
@@ -466,37 +256,7 @@ const AssetList: React.FC = () => {
         break;
       case "scoopValue":
         comparison =
-          ((Number(a[1].quote?.outAmount) ?? 0) || 0) -
-          ((Number(b[1].quote?.outAmount) ?? 0) || 0);
-        break;
-      default:
-        break;
-    }
-
-    return ascending === true ? comparison : -comparison;
-  });
-
-  console.log("OGFILTERED DATA HERE", ogfilteredData);
-  console.log("FILTERED DATA HERE", filteredData);
-
-  const sortedogAssets = [...filteredData].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sortOption) {
-      case "symbol":
-        comparison = a[1].asset.token.symbol.localeCompare(
-          b[1].asset.token.symbol
-        );
-        break;
-      case "balance":
-        comparison =
-          Number(a[1].asset.balance) / 10 ** a[1].asset.token.decimals -
-          Number(b[1].asset.balance) / 10 ** b[1].asset.token.decimals;
-        break;
-      case "scoopValue":
-        comparison =
-          ((Number(a[1].quote?.outAmount) ?? 0) || 0) -
-          ((Number(b[1].quote?.outAmount) ?? 0) || 0);
+          ((Number(a[1].quote?.outAmount) ?? 0) || 0) - ((Number(b[1].quote?.outAmount) ?? 0) || 0);
         break;
       default:
         break;
@@ -504,6 +264,17 @@ const AssetList: React.FC = () => {
 
     return ascending === true ? comparison : -comparison; // Adjust comparison based on sortOrder
   });
+
+  console.log("FILTERED DATA HERE", filteredData);
+
+  const handlePercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputPercentage = parseFloat(e.target.value);
+    if (inputPercentage > 100) {
+      setPercentage(100);
+    } else {
+      setPercentage(inputPercentage);
+    }
+  };
 
   const SummaryModal = () => {
     return (
@@ -517,31 +288,27 @@ const AssetList: React.FC = () => {
           role="dialog"
         >
           <button
-            className="absolute end-4 top-4 text-gray-600 transition hover:scale-110"
+            className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
             onClick={() => setOpenModal(false)}
           >
-            <span className="sr-only lowercase">Close cart</span>
+            <span className="sr-only">Close cart</span>
 
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
-              stroke-width="1.5"
+              strokeWidth="1.5"
               stroke="currentColor"
               className="h-5 w-5"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <div className="mt-4 space-y-6 overflow-hidden bg-black text-white overflow-y-auto pr-8">
+          <div className="mt-4 space-y-6 overflow-hidden overflow-y-auto pr-8">
             <ul className="space-y-4">
               {selectedItems.map((entry, index) => {
                 return (
-                  <li className="flex items-center text-white gap-4">
+                  <li key={entry.asset.token.address} className="flex items-center gap-4">
                     <img
                       src={entry.asset.token.logoURI}
                       alt="Logo"
@@ -549,37 +316,56 @@ const AssetList: React.FC = () => {
                     />
 
                     <div>
-                      <h3 className="text-sm text-white lowercase">
-                        {entry.asset.token.name}
-                      </h3>
+                      <h3 className="text-sm text-white">{entry.asset.token.name}</h3>
 
-                      <dl className="lowercase  mt-0.5 space-y-px text-[10px] text-gray-600">
+                      <dl className="mt-0.5 space-y-px text-[10px] text-white">
                         <div>
-                          <dt className="lowercase text-white inline">to swap: </dt>
-                          <dd className="lowercase text-white inline">
+                          <dt className="inline">Balance: </dt>
+                          <dd className="inline">
                             {(
-                              Number(entry.asset?.balance)
+                              Number(entry.asset?.balance) /
+                              10 ** entry.asset.token.decimals
                             ).toLocaleString()}
                           </dd>
                         </div>
 
                         <div>
-                          <dt className="text-white lowercase inline">swap Value: </dt>
-                          <dd className="text-white lowercase inline">
+                          <dt className="inline">Swapping: </dt>
+                          <dd className="inline">
+                            {(
+                              (Number(entry.asset?.balance) /
+                                10 ** entry.asset.token.decimals /
+                                100) *
+                              percentage
+                            ).toLocaleString()}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt className="inline">Scoop Value: </dt>
+                          <dd className="inline">
                             {entry.quote?.outAmount
-                              ? (
-                                  Number(entry.quote.outAmount)
-                                ).toLocaleString()
+                              ? "$" +
+                                (Number(entry.quote.outAmount) / 10 ** 6)
+                                  .toFixed(2)
+                                  .toLocaleString()
                               : "No quote"}
                           </dd>
                         </div>
+                        {/* {entry.quote && !entry.swap && (
+                          <div>
+                            <dt className="inline">
+                              <strong>!!! Swap can't be performed, burning instead !!!</strong>
+                            </dt>
+                          </div>
+                        )} */}
                       </dl>
                     </div>
 
                     <div className="flex flex-1 items-center justify-end gap-2">
                       {state === ApplicationStates.LOADED_QUOTES ? (
                         <button
-                          className="text-gray-600 transition hover:text-red-600"
+                          className="text-white/60 transition hover:text-white"
                           onClick={() => {
                             updateAssetList((aL) => {
                               aL[entry.asset?.token.address].checked = false;
@@ -590,7 +376,7 @@ const AssetList: React.FC = () => {
                             });
                           }}
                         >
-                          <span className="sr-only">remove item</span>
+                          <span className="sr-only">Remove item</span>
 
                           <svg
                             width="24"
@@ -604,8 +390,8 @@ const AssetList: React.FC = () => {
                               fill="currentColor"
                             />
                             <path
-                              fill-rule="evenodd"
-                              clip-rule="evenodd"
+                              fillRule="evenodd"
+                              clipRule="evenodd"
                               d="M23 12C23 18.0751 18.0751 23 12 23C5.92487 23 1 18.0751 1 12C1 5.92487 5.92487 1 12 1C18.0751 1 23 5.92487 23 12ZM21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
                               fill="currentColor"
                             />
@@ -623,8 +409,8 @@ const AssetList: React.FC = () => {
                         >
                           <path
                             opacity="0.2"
-                            fill-rule="evenodd"
-                            clip-rule="evenodd"
+                            fillRule="evenodd"
+                            clipRule="evenodd"
                             d="M12 19C15.866 19 19 15.866 19 12C19 8.13401 15.866 5 12 5C8.13401 5 5 8.13401 5 12C5 15.866 8.13401 19 12 19ZM12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
                             fill="currentColor"
                           />
@@ -648,8 +434,8 @@ const AssetList: React.FC = () => {
                             fill="currentColor"
                           />
                           <path
-                            fill-rule="evenodd"
-                            clip-rule="evenodd"
+                            fillRule="evenodd"
+                            clipRule="evenodd"
                             d="M1 5C1 2.79086 2.79086 1 5 1H19C21.2091 1 23 2.79086 23 5V19C23 21.2091 21.2091 23 19 23H5C2.79086 23 1 21.2091 1 19V5ZM5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3Z"
                             fill="currentColor"
                           />
@@ -669,8 +455,8 @@ const AssetList: React.FC = () => {
                             fill="currentColor"
                           />
                           <path
-                            fill-rule="evenodd"
-                            clip-rule="evenodd"
+                            fillRule="evenodd"
+                            clipRule="evenodd"
                             d="M4 1C2.34315 1 1 2.34315 1 4V20C1 21.6569 2.34315 23 4 23H20C21.6569 23 23 21.6569 23 20V4C23 2.34315 21.6569 1 20 1H4ZM20 3H4C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V4C21 3.44772 20.5523 3 20 3Z"
                             fill="currentColor"
                           />
@@ -685,36 +471,35 @@ const AssetList: React.FC = () => {
           <div className="space-y-4 mt-4">
             <div className="border-t border-gray-100">
               <div className="space-y-4">
-                <dl className="space-y-0.5 text-sm lowercase text-white">
+                <dl className="space-y-0.5 text-sm text-white">
                   <div className="flex justify-between">
-                    <dt>swapped Tokens</dt>
+                    <dt>No. of Scooped Tokens</dt>
                     <dd>{selectedItems.length}</dd>
                   </div>
 
-                  <div className="flex lowercase justify-between">
-                    <dt>estimated Swap Value</dt>
-                    <dd>${
-                    (totalScoop)
-                    .toFixed(2).replace(/\d(?=(\d{3})+\.)/g,
-                    '$&,')}
+                  <div className="flex justify-between">
+                    <dt>Total Expected Scoop Value</dt>
+                    <dd>
+                      $
+                      {((totalScoop / 10 ** 6 / 100) * (percentage || 0))
+                        .toFixed(2)
+                        .toLocaleString()}
                     </dd>
                   </div>
-
                 </dl>
               </div>
             </div>
             <button
-  onClick={scoop}
-  disabled={state === ApplicationStates.SCOOPED}
-  className={`block rounded border border-white bg-black px-5 py-3 text-sm text-white lowercase transition w-full ${
-    state === ApplicationStates.SCOOPED
-      ? "hover:cursor-not-allowed"
-      : "hover:bg-black hover:border-opacity-50"
-  }`}
->
-  Confirm
-</button>
-
+              onClick={scoop}
+              disabled={state === ApplicationStates.SCOOPED}
+              className={`block rounded px-5 py-3 text-sm border border-gray-600 bg-black transition w-full ${
+                state === ApplicationStates.SCOOPED
+                  ? "hover:cursor-not-allowed"
+                  : "hover:opacity-80"
+              }`}
+            >
+              Confirm
+            </button>
             {state === ApplicationStates.SCOOPED && (
               <div className="italic text-sm text-center">
                 Transaction has been processed, please refresh assets
@@ -776,8 +561,8 @@ const AssetList: React.FC = () => {
                         fill="currentColor"
                       />
                       <path
-                        fill-rule="evenodd"
-                        clip-rule="evenodd"
+                        fillRule="evenodd"
+                        clipRule="evenodd"
                         d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12Z"
                         fill="currentColor"
                       />
@@ -793,7 +578,7 @@ const AssetList: React.FC = () => {
                 </th>
                 {/* <th className="whitespace-nowrap p-4 font-medium text-gray-900 text-lg">
                     Status
-                  </th> */} 
+                  </th> */}
               </tr>
             </thead>
             <tbody className="lowercase divide-y divide-gray-200 relative">
@@ -802,7 +587,7 @@ const AssetList: React.FC = () => {
                 state !== ApplicationStates.SCOOPING && (
                   <tr>
                     <td className="lowercase table-cell" colSpan={100}>
-                      <div className="lowercase text-center bg-black text-white text-lg lg:text-4xl bg-black flex items-center gap-2 min-h-48 h-full w-full justify-center animate-pulse">
+                      <div className="lowercase text-center text-white text-lg lg:text-4xl bg-black flex items-center gap-2 min-h-48 h-full w-full justify-center animate-pulse">
                         Fetching Data...{" "}
                         <svg
                           width="72"
@@ -814,8 +599,8 @@ const AssetList: React.FC = () => {
                         >
                           <path
                             opacity="0.2"
-                            fill-rule="evenodd"
-                            clip-rule="evenodd"
+                            fillRule="evenodd"
+                            clipRule="evenodd"
                             d="M12 19C15.866 19 19 15.866 19 12C19 8.13401 15.866 5 12 5C8.13401 5 5 8.13401 5 12C5 15.866 8.13401 19 12 19ZM12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
                             fill="black"
                           />
@@ -832,17 +617,16 @@ const AssetList: React.FC = () => {
                     </td>
                   </tr>
                 )}
-              {state === ApplicationStates.LOADED_QUOTES &&
-                ogfilteredData.length === 0 && (
-                  <tr>
-                    <td className="table-cell" colSpan={5}>
-                      <div className="lowercase text-center font-black uppercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
-                        No Data
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              {sortedogAssets.map(([key, entry]) => {
+              {state === ApplicationStates.LOADED_QUOTES && filteredData.length === 0 && (
+                <tr>
+                  <td className="table-cell" colSpan={5}>
+                    <div className="text-center font-black uppercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
+                      No Data
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {sortedAssets.map(([key, entry]) => {
                 let burnReturn = getAssetBurnReturn(entry);
                 return (
                   <tr
@@ -861,11 +645,10 @@ const AssetList: React.FC = () => {
                       {forbiddenTokens.includes(entry.asset.token.symbol) || (
                         <input
                           className="h-4 w-4 rounded border-gray-800"
-                          checked={entry.checked}
+                          checked={!!entry.checked}
                           onChange={(change) => {
-                            updateogAssetList((aL) => {
-                              aL[entry.asset?.token.address].checked =
-                                change.target.checked;
+                            updateAssetList((aL) => {
+                              aL[entry.asset?.token.address].checked = change.target.checked;
                               return aL;
                             });
                           }}
@@ -897,8 +680,8 @@ const AssetList: React.FC = () => {
                             className="h-8 w-8 rounded-full border border-[#091e05]"
                           >
                             <path
-                              fill-rule="evenodd"
-                              clip-rule="evenodd"
+                              fillRule="evenodd"
+                              clipRule="evenodd"
                               d="M17 5V4C17 2.89543 16.1046 2 15 2H9C7.89543 2 7 2.89543 7 4V5H4C3.44772 5 3 5.44772 3 6C3 6.55228 3.44772 7 4 7H5V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V7H20C20.5523 7 21 6.55228 21 6C21 5.44772 20.5523 5 20 5H17ZM15 4H9V5H15V4ZM17 7H7V18C7 18.5523 7.44772 19 8 19H16C16.5523 19 17 18.5523 17 18V7Z"
                               fill="currentColor"
                             />
@@ -910,21 +693,24 @@ const AssetList: React.FC = () => {
                       </a>
                     </td>
                     <td className="whitespace-nowrap p-4 text-blue-300 text-right font-mono hover:font-bold">
-                      {(
-                     (Number(entry.asset?.balance) / 10 ** entry.asset.token.decimals).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))}
+                      {(Number(entry.asset?.balance) / 10 ** entry.asset.token.decimals)
+                        .toFixed(2)
+                        .replace(/\d(?=(\d{3})+\.)/g, "$&,")}
                     </td>
                     <td className="whitespace-nowrap p-4 text-green-300 text-right font-mono hover:font-bold">
-                      ${entry.quote?.outAmount
-                        ? (
-                          (Number(burnReturn.bonkAmount) / 10 ** 5 / 10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'))
+                      $
+                      {entry.quote?.outAmount
+                        ? (Number(burnReturn.bonkAmount) / 10 ** 6)
+                            .toFixed(2)
+                            .replace(/\d(?=(\d{3})+\.)/g, "$&,")
                         : "No quote"}
                     </td>
-                    {/* <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    {/* <td className="whitespace-nowrap p-4 text-white text-right font-mono">
                       {(
                         Number(burnReturn.lamportsAmount) / LAMPORTS_PER_SOL
                       ).toLocaleString()}
                     </td> */}
-                    {/* <td className="whitespace-nowrap p-4 text-gray-700 text-right font-mono">
+                    {/* <td className="whitespace-nowrap p-4 text-white text-right font-mono">
                       {(
                         Number(burnReturn.feeAmount) /
                         10 ** 5
@@ -934,9 +720,7 @@ const AssetList: React.FC = () => {
                       {entry.asset?.token.strict && <p>Strict</p>}
                     </td> */}
                     <td className="whitespace-nowrap p-4 bg-black text-white text-right">
-                      {entry.transactionState && (
-                        <p>{entry.transactionState}</p>
-                      )}
+                      {entry.transactionState && <p>{entry.transactionState}</p>}
                     </td>
                   </tr>
                 );
@@ -956,8 +740,8 @@ const AssetList: React.FC = () => {
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
                     d="M17 5V4C17 2.89543 16.1046 2 15 2H9C7.89543 2 7 2.89543 7 4V5H4C3.44772 5 3 5.44772 3 6C3 6.55228 3.44772 7 4 7H5V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V7H20C20.5523 7 21 6.55228 21 6C21 5.44772 20.5523 5 20 5H17ZM15 4H9V5H15V4ZM17 7H7V18C7 18.5523 7.44772 19 8 19H16C16.5523 19 17 18.5523 17 18V7Z"
                     fill="currentColor"
                   />
@@ -965,14 +749,13 @@ const AssetList: React.FC = () => {
                   <path d="M13 9H15V17H13V9Z" fill="currentColor" />
                 </svg>
               </span> */}
-<span className="rounded-full bg-black text-white p-3 sm:order-last">
-        <FontAwesomeIcon icon={faMoneyBillWave} size="1x" className="text-green-300" />
-      </span>
+              <span className="rounded-full bg-black text-white p-3 sm:order-last">
+                <FontAwesomeIcon icon={faMoneyBillWave} size="1x" className="text-green-300" />
+              </span>
               <div>
-              <p className="text-2xl bg-black text-white font-medium text-white">
-  {Number((totalPossibleScoop / (10 ** 5) / 10).toFixed(2)).toLocaleString()}
-</p>
-
+                <p className="text-2xl bg-black text-white font-medium">
+                  ${(totalPossibleScoop / 10 ** 6).toFixed(2).toLocaleString()}
+                </p>
 
                 <p className="text-sm text-white lowercase">portfolio value</p>
               </div>
@@ -987,52 +770,56 @@ const AssetList: React.FC = () => {
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
                     d="M22.775 8C22.9242 8.65461 23 9.32542 23 10H14V1C14.6746 1 15.3454 1.07584 16 1.22504C16.4923 1.33724 16.9754 1.49094 17.4442 1.68508C18.5361 2.13738 19.5282 2.80031 20.364 3.63604C21.1997 4.47177 21.8626 5.46392 22.3149 6.55585C22.5091 7.02455 22.6628 7.5077 22.775 8ZM20.7082 8C20.6397 7.77018 20.5593 7.54361 20.4672 7.32122C20.1154 6.47194 19.5998 5.70026 18.9497 5.05025C18.2997 4.40024 17.5281 3.88463 16.6788 3.53284C16.4564 3.44073 16.2298 3.36031 16 3.2918V8H20.7082Z"
                     fill="currentColor"
                   />
                   <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
                     d="M1 14C1 9.02944 5.02944 5 10 5C10.6746 5 11.3454 5.07584 12 5.22504V12H18.775C18.9242 12.6546 19 13.3254 19 14C19 18.9706 14.9706 23 10 23C5.02944 23 1 18.9706 1 14ZM16.8035 14H10V7.19648C6.24252 7.19648 3.19648 10.2425 3.19648 14C3.19648 17.7575 6.24252 20.8035 10 20.8035C13.7575 20.8035 16.8035 17.7575 16.8035 14Z"
                     fill="currentColor"
                   />
                 </svg> */}
                 <span className="rounded-full bg-black text-white p-3 sm:order-last">
-        <FontAwesomeIcon icon={faChartPie} size="1x" className="text-pink-500" />
-      </span>
+                  <FontAwesomeIcon icon={faChartPie} size="1x" className="text-pink-500" />
+                </span>
               </span>
 
               <div>
-                {/* <p className="lowercase text-2xl font-medium bg-black text-white">
-                  ${(totalScoop / (10 ** 5)/10).toLocaleString()}
-                </p> */}
+                <p className="lowercase text-2xl font-medium bg-black text-white">
+                  ${((totalScoop / 10 ** 6 / 100) * (percentage || 0)).toFixed(2).toLocaleString()}
+                </p>
                 <div>
-                <input
-          type="number"
-          min="0"
-          max="100"
-          value={percentage}
-          onChange={handlePercentageChange}
-          className="lowercase border border-gray-300 bg-black text-white rounded-md p-2"
-        />
-        <span>%</span>
-    </div>
-    <p className="lowercase text-2xl mt-2 font-medium bg-black text-white">
-          ${(valueToSwap / (10 ** 5)/10).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}
-        </p>
-        <p className="lowercase text-sm bg-black text-white">to swap</p>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={percentage}
+                    onChange={handlePercentageChange}
+                    className="lowercase border border-gray-300 bg-black w-24 text-white rounded-md p-2"
+                  />
+                  <span>%</span>
+                </div>
+                <p className="lowercase text-2xl mt-2 font-medium bg-black text-white">
+                  {/* ${(valueToSwap / 10 ** 6).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")} */}
+                </p>
+                <p className="lowercase text-sm bg-black text-white">to swap</p>
               </div>
             </article>
             <button
-              className={`inline-block rounded bg-black border border-white text-white hover:opacity-60 lowercase py-3 font-medium text-black transition focus:outline-none focus:ring text-xl ${
-                isButtonDisabled
-                  ? "hover:cursor-not-allowed opacity-10"
-                  : "hover:shadow-xl"
+              className={`inline-block rounded bg-black border border-white text-white hover:opacity-60 lowercase py-3 font-medium transition focus:outline-none focus:ring text-xl ${
+                isButtonDisabled ? "hover:cursor-not-allowed opacity-10" : "hover:shadow-xl"
               }`}
               disabled={isButtonDisabled}
-              onClick={() => setOpenModal(true)}
+              onClick={() => {
+                if (!percentage || percentage < 0 || percentage > 100) {
+                  toast.error("Invalid percentage value");
+                } else {
+                  setOpenModal(true);
+                }
+              }}
             >
               swap
             </button>
@@ -1064,23 +851,20 @@ const AssetList: React.FC = () => {
               />
 
               <span className="lowercase absolute text-white inset-y-0 end-0 grid w-10 place-content-center">
-                <button
-                  type="button"
-                  className="text-gray-600 hover:text-white"
-                >
+                <button type="button" className="text-white hover:text-white">
                   <span className="lowercase sr-only">Search</span>
 
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    stroke-width="1.5"
+                    strokeWidth="1.5"
                     stroke="currentColor"
                     className="h-4 w-4"
                   >
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                     />
                   </svg>
@@ -1095,8 +879,8 @@ const AssetList: React.FC = () => {
                 "pointer-events-none"
               }`}
             >
-              <details className="lowercase overflow-hidden rounded border border-gray-300 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="lowercase flex cursor-pointer items-center justify-between gap-2 text-white bg-black p-4 text-white transition">
+              {/* <details className="lowercase overflow-hidden rounded border border-gray-300 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="lowercase flex cursor-pointer items-center justify-between gap-2 text-white bg-black p-4 transition">
                   <span className="lowercase text-sm font-medium"> Filter </span>
 
                   <span className="lowercase transition group-open:-rotate-180">
@@ -1104,13 +888,13 @@ const AssetList: React.FC = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="1.5"
+                      strokeWidth="1.5"
                       stroke="currentColor"
                       className="h-4 w-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                       />
                     </svg>
@@ -1133,7 +917,7 @@ const AssetList: React.FC = () => {
                       </label>
                     </li>
 
-                    {/* <li>
+                    <li>
                       <label className="lowercase inline-flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -1145,31 +929,31 @@ const AssetList: React.FC = () => {
                           Strict
                         </span>
                       </label>
-                    </li> */}
+                    </li>
                   </ul>
                 </div>
-              </details>
+              </details> */}
 
               <details className="lowercase overflow-hidden rounded border border-gray-300 [&_summary::-webkit-details-marker]:hidden">
                 <summary className="lowercase lex cursor-pointer items-center justify-between gap-2 text-white bg-black p-4 transition">
                   <span className="lowercase text-sm font-medium text-white bg-black"> Sort </span>
 
-                  <span className="lowercase transition group-open:-rotate-180 text-white bg-black">
+                  {/* <span className="lowercase transition group-open:-rotate-180 text-white bg-black">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="1.5"
+                      strokeWidth="1.5"
                       stroke="currentColor"
                       className="h-4 w-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                       />
                     </svg>
-                  </span>
+                  </span> */}
                 </summary>
 
                 <div className="lowercase border-t border-gray-200 text-white bg-black">
@@ -1259,7 +1043,7 @@ const AssetList: React.FC = () => {
               <div
                 className="bg-[#000000] border border-white text-white text-center py-2 rounded hover:opacity-60 hover:cursor-pointer max-w-max px-8 flex items-center gap-2"
                 onClick={(x) => {
-                  ogreload();
+                  reload();
                 }}
               >
                 <svg

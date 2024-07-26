@@ -483,14 +483,13 @@ async function findQuotes(
  * @returns [instance of Jupiter API, map of known token types by mint address]
  */
 async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo }]> {
+  // const ENDPOINT = "your-quicknode-pro-plan-endpoint";
+  // const CONFIG = {
+  //   basePath: ENDPOINT,
+  // };
+  // let quoteApi = createJupiterApiClient(CONFIG);
 
-  const ENDPOINT = "https://jupiter-swap-api.quiknode.pro/D699F14B87B6";
-  const CONFIG = {
-    basePath: ENDPOINT,
-  };
-
-  let quoteApi = createJupiterApiClient(CONFIG);
-
+  let quoteApi = createJupiterApiClient();
   const allTokens = await fetch("https://token.jup.ag/all");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};

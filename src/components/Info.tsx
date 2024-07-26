@@ -32,14 +32,16 @@ const Info = () => {
     <section className="bg-[#000000] text-white rounded-3xl relative px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 mb-4 shadow-[-10px_10px_20px_5px_rgba(0,0,0,0.4)] z-20 border border-white">
       <div className="max-w-screen-xl">
         <div className="max-w-xl">
-          <h2 className="lowercase text-3xl font-black sm:text-6xl">
-            solo swap
-          </h2>
+          <h2 className="lowercase text-3xl font-black sm:text-6xl">solo swap</h2>
           <p className="lowercase mt-4 font-semibold tracking-wide">
-            In a pro rata swap, each asset represents the same portion as in your portfolio.
-            Swap selected assets into $USDC via
-             <a href="https://jup.ag/"> <u>Jupiter swaps</u></a> <br/>
-             {/* <br/> */}
+            In a pro rata swap, each asset represents the same portion as in your portfolio. Swap
+            selected assets into $USDC via
+            <a href="https://jup.ag/">
+              {" "}
+              <u>Jupiter swaps</u>
+            </a>{" "}
+            <br />
+            {/* <br/> */}
             {/* <i>A {getTotalFee().toLocaleString()}% fee is currently taken from all swaps.</i> */}
           </p>
         </div>
@@ -48,16 +50,14 @@ const Info = () => {
           {steps.map((step, index) => {
             const { title, description, image } = step;
             return (
-              <div className="lowercase flex items-start gap-4">
+              <div key={title} className="lowercase flex items-start gap-4">
                 {/* <span className="shrink-0 rounded-lg bg-[#FC8E03] p-4 text-center">
                   <p className="h-5 w-5 font-black text-3xl">{index + 1}</p>
                 </span> */}
                 <img src={image} alt="" width={50} />
 
                 <div>
-                  <h2 className="lowercase text-xl sm:text-3xl font-black uppercase">
-                    {title}
-                  </h2>
+                  <h2 className="lowercase text-xl sm:text-3xl font-black">{title}</h2>
 
                   <p className="lowercase mt-1 text-sm text-gray-300 font-semibold tracking-wide">
                     {description}
@@ -73,4 +73,3 @@ const Info = () => {
 };
 
 export default Info;
-

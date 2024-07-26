@@ -7,6 +7,7 @@ import {
   TransactionMessage,
   TransactionInstruction,
   AddressLookupTableAccount,
+  Transaction,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -16,6 +17,9 @@ import {
   createBurnInstruction,
   createTransferInstruction,
   getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountIdempotentInstruction,
+  transferChecked,
+  createTransferCheckedInstruction,
 } from "@solana/spl-token";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import { Buffer } from "buffer";
@@ -501,6 +505,138 @@ async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo 
   return [quoteApi, tokenMap];
 }
 
+async function buildTransferTransaction(
+  wallet: WalletContextState,
+  blockhash: string,
+  asset: Asset,
+  amount: number,
+  sendToWallet: string
+): Promise<VersionedTransaction | null> {
+  if (asset.checked && wallet.publicKey) {
+    const tokenPubkey = new PublicKey(asset.asset.token.address);
+    const fromPubkey = wallet.publicKey;
+    const toPubkey = new PublicKey(sendToWallet);
+    let instructions: TransactionInstruction[] = [];
+
+    // get sender and recipient token account
+    const fromATA = getAssociatedTokenAddressSync(
+      tokenPubkey,
+      wallet.publicKey,
+      false,
+      asset.asset.programId
+    );
+    console.log("fromATA:", fromATA.toBase58());
+
+    const toATA = getAssociatedTokenAddressSync(
+      tokenPubkey,
+      toPubkey,
+      false,
+      asset.asset.programId
+    );
+    console.log("toATA:", toATA.toBase58());
+
+    // add create token account instruction
+    instructions.push(
+      createAssociatedTokenAccountIdempotentInstruction(
+        wallet.publicKey,
+        toATA,
+        toPubkey,
+        tokenPubkey,
+        asset.asset.programId
+      )
+    );
+
+    // add spl transfer instruction
+    instructions.push(
+      createTransferCheckedInstruction(
+        fromATA,
+        tokenPubkey,
+        toATA,
+        fromPubkey,
+        amount,
+        asset.asset.token.decimals,
+        [],
+        asset.asset.programId
+      )
+    );
+
+    console.log(instructions);
+    if (instructions.length > 0) {
+      const message = new TransactionMessage({
+        payerKey: wallet.publicKey,
+        recentBlockhash: blockhash,
+        instructions: instructions,
+      }).compileToV0Message();
+      const tx = new VersionedTransaction(message);
+      console.log("Created transaction");
+      console.log(tx);
+      return tx;
+    }
+  }
+  return null;
+}
+
+async function sendTokens(
+  wallet: WalletContextState,
+  sendToWallet: string,
+  connection: Connection,
+  assets: Asset[],
+  percentage: number,
+  transactionStateCallback: (id: string, state: string) => void,
+  transactionIdCallback: (id: string, txid: string) => void,
+  errorCallback: (id: string, error: any) => void
+): Promise<void> {
+  console.log("sendToWallet:", sendToWallet);
+  const transactions: [string, VersionedTransaction][] = [];
+  const blockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  await Promise.allSettled(
+    assets.map(async (asset) => {
+      const amount = Math.floor((Number(asset.asset.balance) / 100) * percentage);
+      const tx = await buildTransferTransaction(wallet, blockhash, asset, amount, sendToWallet);
+      if (tx) {
+        transactions.push([asset.asset.token.address, tx]);
+      }
+    })
+  );
+
+  console.log("Transactions");
+  console.log(transactions);
+
+  if (wallet.signAllTransactions) {
+    const signedTransactions = await wallet.signAllTransactions(
+      transactions.map(([id, transaction]) => transaction)
+    );
+
+    console.log("Signed transactions:");
+    console.log(signedTransactions);
+    console.log(transactions);
+
+    await Promise.all(
+      signedTransactions.map(async (transaction, i) => {
+        const assetId = transactions[i][0];
+        transactionStateCallback(assetId, "Sending");
+
+        try {
+          const result = await sendAndConfirmRawTransaction(
+            connection,
+            Buffer.from(transaction.serialize()),
+            {}
+          );
+          console.log("Transaction Success!");
+          transactionStateCallback(assetId, "Sent");
+          transactionIdCallback(assetId, result);
+        } catch (err) {
+          console.log("Transaction failed!");
+          console.log(err);
+          transactionStateCallback(assetId, "Error");
+          errorCallback(assetId, err);
+        }
+      })
+    );
+  }
+}
+
 export {
   getTokenAccounts,
   getAssetBurnReturn,
@@ -508,6 +644,7 @@ export {
   findQuotes,
   loadJupyterApi,
   getTotalFee,
+  sendTokens,
   USDC_TOKEN_MINT,
 };
 export type { TokenInfo, TokenBalance };

@@ -324,6 +324,32 @@ async function sweepTokens(
           quoteResponse: quote,
         },
       };
+
+      // // On production, jupiter api will throw cors error when it's rate limited,
+      // // where as on localhost, it will return rate limited.
+
+      // // If you want to fix cors error, you have to use a proxy like heroku,
+      // // but it will just change the error message to rate limited since you are using the free api.
+
+      // // You can test it by using the cors proxy code below.
+
+      // // uncomment this block if you want to use cors proxy.
+      // // proxy to avoid cors issues temporarily on localhost.
+      // // visit https://cors-anywhere.herokuapp.com/corsdemo to enable temporary access
+      // const corsProxy = "https://cors-anywhere.herokuapp.com/";
+      // const swapUrl = "https://quote-api.jup.ag/v6/swap";
+      // const url = corsProxy + swapUrl;
+      // const swapRes = await fetch(url, {
+      //   method: "POST",
+      //   cache: "reload",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(rq),
+      // });
+      // const swap = await swapRes.json();
+
+      // comment the line below if you want to use cors proxy.
       const swap = await quoteApi.swapInstructionsPost(rq);
       console.log("swap:", swap);
 
@@ -457,12 +483,14 @@ async function findQuotes(
  * @returns [instance of Jupiter API, map of known token types by mint address]
  */
 async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo }]> {
+
   const ENDPOINT = "https://jupiter-swap-api.quiknode.pro/D699F14B87B6";
   const CONFIG = {
     basePath: ENDPOINT,
   };
 
   let quoteApi = createJupiterApiClient(CONFIG);
+
   const allTokens = await fetch("https://token.jup.ag/all");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};

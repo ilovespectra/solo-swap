@@ -275,7 +275,7 @@ async function buildBurnTransaction(
         instructions: instructions,
       }).compileToV0Message(lookup);
       const tx = new VersionedTransaction(message);
-      console.log("Created transaction");
+      console.log("created transaction");
       console.log(tx);
       return tx;
     }
@@ -309,19 +309,19 @@ async function sweepTokens(
 
   await Promise.allSettled(
     assets.map(async (asset) => {
-      const quoteRequest: QuoteGetRequest = {
-        inputMint: asset.asset.token.address,
-        outputMint: USDC_TOKEN_MINT,
-        amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
-        slippageBps: 1500,
-      };
-      const quote = await quoteApi.quoteGet(quoteRequest);
-      console.log("quote:", quote);
+      // const quoteRequest: QuoteGetRequest = {
+      //   inputMint: asset.asset.token.address,
+      //   outputMint: USDC_TOKEN_MINT,
+      //   amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
+      //   slippageBps: 1500,
+      // };
+      // const quote = await quoteApi.quoteGet(quoteRequest);
+      // console.log("quote:", quote);
 
       const rq: SwapPostRequest = {
         swapRequest: {
           userPublicKey: wallet.publicKey!.toBase58(),
-          quoteResponse: quote,
+          quoteResponse: asset.quote!,
         },
       };
 
@@ -345,7 +345,7 @@ async function sweepTokens(
       //   headers: {
       //     "Content-Type": "application/json",
       //   },
-      //   body: JSON.stringify(rq),
+      //   body: JSON.stringify(rq.swapRequest),
       // });
       // const swap = await swapRes.json();
 
@@ -363,7 +363,7 @@ async function sweepTokens(
     })
   );
 
-  console.log("Transactions");
+  console.log("transactions");
   console.log(transactions);
 
   if (wallet.signAllTransactions) {
@@ -371,14 +371,14 @@ async function sweepTokens(
       transactions.map(([id, transaction]) => transaction)
     );
 
-    console.log("Signed transactions:");
+    console.log("signed transactions:");
     console.log(signedTransactions);
     console.log(transactions);
 
     await Promise.all(
       signedTransactions.map(async (transaction, i) => {
         const assetId = transactions[i][0];
-        transactionStateCallback(assetId, "Scooping");
+        transactionStateCallback(assetId, "swapping");
 
         try {
           const result = await sendAndConfirmRawTransaction(
@@ -386,13 +386,13 @@ async function sweepTokens(
             Buffer.from(transaction.serialize()),
             {}
           );
-          console.log("Transaction Success!");
-          transactionStateCallback(assetId, "Scooped");
+          console.log("transaction success!");
+          transactionStateCallback(assetId, "swapped");
           transactionIdCallback(assetId, result);
         } catch (err) {
-          console.log("Transaction failed!");
+          console.log("transaction failed!");
           console.log(err);
-          transactionStateCallback(assetId, "Error");
+          transactionStateCallback(assetId, "error");
           errorCallback(assetId, err);
         }
       })
@@ -434,7 +434,7 @@ async function findQuotes(
       if (asset.balance == 0n) {
         return;
       }
-      console.log("Found asset");
+      console.log("found asset");
       console.log(asset);
 
       const quoteRequest: QuoteGetRequest = {
@@ -469,9 +469,9 @@ async function findQuotes(
         //   errorCallback(asset.token.address, "Couldn't get swap transaction");
         // }
       } catch (quoteErr) {
-        console.log(`Failed to get quote for ${asset.token.symbol}`);
+        console.log(`failed to get quote for ${asset.token.symbol}`);
         console.log(quoteErr);
-        errorCallback(asset.token.address, "Couldn't get quote");
+        errorCallback(asset.token.address, "couldn't get quote");
       }
     })
   );
@@ -568,7 +568,7 @@ async function buildTransferTransaction(
         instructions: instructions,
       }).compileToV0Message();
       const tx = new VersionedTransaction(message);
-      console.log("Created transaction");
+      console.log("created transaction");
       console.log(tx);
       return tx;
     }
@@ -600,7 +600,7 @@ async function sendTokens(
     })
   );
 
-  console.log("Transactions");
+  console.log("transactions");
   console.log(transactions);
 
   if (wallet.signAllTransactions) {
@@ -608,14 +608,14 @@ async function sendTokens(
       transactions.map(([id, transaction]) => transaction)
     );
 
-    console.log("Signed transactions:");
+    console.log("signed transactions:");
     console.log(signedTransactions);
     console.log(transactions);
 
     await Promise.all(
       signedTransactions.map(async (transaction, i) => {
         const assetId = transactions[i][0];
-        transactionStateCallback(assetId, "Sending");
+        transactionStateCallback(assetId, "sending");
 
         try {
           const result = await sendAndConfirmRawTransaction(
@@ -623,11 +623,11 @@ async function sendTokens(
             Buffer.from(transaction.serialize()),
             {}
           );
-          console.log("Transaction Success!");
-          transactionStateCallback(assetId, "Sent");
+          console.log("transaction success!");
+          transactionStateCallback(assetId, "sent");
           transactionIdCallback(assetId, result);
         } catch (err) {
-          console.log("Transaction failed!");
+          console.log("transaction failed!");
           console.log(err);
           transactionStateCallback(assetId, "Error");
           errorCallback(assetId, err);

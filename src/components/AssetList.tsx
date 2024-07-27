@@ -97,10 +97,10 @@ const AssetList: React.FC = () => {
     updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
   ) {
     setAssetList((aL) => {
-      console.log("Old state:");
+      console.log("old state:");
       console.log(assetList);
       let newState = updater({ ...aL });
-      console.log("New state:");
+      console.log("new state:");
       console.log(newState);
       return newState;
     });
@@ -140,7 +140,7 @@ const AssetList: React.FC = () => {
     if (walletAddress && jupiterQuoteApi && tokens && state == ApplicationStates.LOADING) {
       setState(ApplicationStates.LOADED_JUPYTER);
       setAssetList({});
-      console.log("Loading assets for wallet: " + walletAddress);
+      console.log("loading assets for wallet: " + walletAddress);
       findQuotes(
         connection,
         tokens,
@@ -193,12 +193,12 @@ const AssetList: React.FC = () => {
       )
         .then(() => {
           setState(ApplicationStates.SCOOPED);
-          track("Scooped");
+          track("swapped");
         })
         .catch((err) => {
-          const notify = () => toast.error("User rejected transaction!");
+          const notify = () => toast.error("user rejected transaction!");
           notify();
-          console.log("Error signing for scoop!" + err);
+          console.log("error signing for scoop!" + err);
           setState(ApplicationStates.LOADED_QUOTES);
         });
     }
@@ -229,9 +229,9 @@ const AssetList: React.FC = () => {
           track("Sent");
         })
         .catch((err) => {
-          const notify = () => toast.error("User rejected transaction!");
+          const notify = () => toast.error("user rejected transaction!");
           notify();
-          console.log("Error signing for sending!" + err);
+          console.log("error signing for sending!" + err);
           setState(ApplicationStates.LOADED_QUOTES);
         });
     }
@@ -317,11 +317,11 @@ const AssetList: React.FC = () => {
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        toast.success("Text copied to clipboard!");
+        toast.success("text copied to clipboard!");
       })
       .catch((err) => {
-        toast.error("Failed to copy text!");
-        console.error("Failed to copy text: ", err);
+        toast.error("failed to copy text!");
+        console.error("failed to copy text: ", err);
       });
   };
 
@@ -340,7 +340,7 @@ const AssetList: React.FC = () => {
             className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
             onClick={() => setOpenModal("")}
           >
-            <span className="sr-only">Close cart</span>
+            <span className="sr-only">close cart</span>
 
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -369,7 +369,7 @@ const AssetList: React.FC = () => {
 
                       <dl className="mt-0.5 space-y-px text-[10px] text-white">
                         <div>
-                          <dt className="inline">Balance: </dt>
+                          <dt className="inline">balance: </dt>
                           <dd className="inline">
                             {(
                               Number(entry.asset?.balance) /
@@ -379,7 +379,7 @@ const AssetList: React.FC = () => {
                         </div>
 
                         <div>
-                          <dt className="inline">Swapping: </dt>
+                          <dt className="inline">swapping: </dt>
                           <dd className="inline">
                             {(
                               (Number(entry.asset?.balance) /
@@ -391,7 +391,7 @@ const AssetList: React.FC = () => {
                         </div>
 
                         <div>
-                          <dt className="inline">Swap Value: </dt>
+                          <dt className="inline">swap value: </dt>
                           <dd className="inline">
                             {entry.quote?.outAmount
                               ? "$" +
@@ -425,7 +425,7 @@ const AssetList: React.FC = () => {
                             });
                           }}
                         >
-                          <span className="sr-only">Remove item</span>
+                          <span className="sr-only">remove item</span>
 
                           <svg
                             width="24"
@@ -522,12 +522,12 @@ const AssetList: React.FC = () => {
               <div className="space-y-4">
                 <dl className="space-y-0.5 text-sm text-white">
                   <div className="flex justify-between">
-                    <dt>No. of Swapped Tokens</dt>
+                    <dt>no. of swapped tokens</dt>
                     <dd>{selectedItems.length}</dd>
                   </div>
 
                   <div className="flex justify-between">
-                    <dt>Total Expected Swap Value</dt>
+                    <dt>total expected swap value</dt>
                     <dd>
                       $
                       {((totalScoop / 10 ** 6 / 100) * (percentage || 0))
@@ -547,11 +547,11 @@ const AssetList: React.FC = () => {
                   : "hover:opacity-80"
               }`}
             >
-              Swap Confirm
+              solo: swap
             </button>
             {state === ApplicationStates.SCOOPED && (
               <div className="italic text-sm text-center">
-                Transaction has been processed, please refresh assets
+                transaction has been processed, please refresh assets
               </div>
             )}
           </div>
@@ -575,7 +575,7 @@ const AssetList: React.FC = () => {
             className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
             onClick={() => setOpenModal("")}
           >
-            <span className="sr-only">Close cart</span>
+            <span className="sr-only">close cart</span>
 
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -604,7 +604,7 @@ const AssetList: React.FC = () => {
 
                       <dl className="mt-0.5 space-y-px text-[10px] text-white">
                         <div>
-                          <dt className="inline">Balance: </dt>
+                          <dt className="inline">balance: </dt>
                           <dd className="inline">
                             {(
                               Number(entry.asset?.balance) /
@@ -614,7 +614,7 @@ const AssetList: React.FC = () => {
                         </div>
 
                         <div>
-                          <dt className="inline">Sending: </dt>
+                          <dt className="inline">sending: </dt>
                           <dd className="inline">
                             {(
                               (Number(entry.asset?.balance) /
@@ -626,7 +626,7 @@ const AssetList: React.FC = () => {
                         </div>
 
                         <div>
-                          <dt className="inline">Send Value: </dt>
+                          <dt className="inline">send value: </dt>
                           <dd className="inline">
                             {entry.quote?.outAmount
                               ? "$" +
@@ -660,7 +660,7 @@ const AssetList: React.FC = () => {
                             });
                           }}
                         >
-                          <span className="sr-only">Remove item</span>
+                          <span className="sr-only">remove item</span>
 
                           <svg
                             width="24"
@@ -757,12 +757,12 @@ const AssetList: React.FC = () => {
               <div className="space-y-4">
                 <dl className="space-y-0.5 text-sm text-white">
                   <div className="flex justify-between">
-                    <dt>No. of Tokens</dt>
+                    <dt>no. of tokens</dt>
                     <dd>{selectedItems.length}</dd>
                   </div>
 
                   <div className="flex justify-between">
-                    <dt>Total Value Send</dt>
+                    <dt>total value send</dt>
                     <dd>
                       $
                       {((totalScoop / 10 ** 6 / 100) * (percentage || 0))
@@ -800,11 +800,11 @@ const AssetList: React.FC = () => {
                 state === ApplicationStates.SENT ? "hover:cursor-not-allowed" : "hover:opacity-80"
               }`}
             >
-              Send Confirm
+              solo: send
             </button>
             {state === ApplicationStates.SENT && (
               <div className="italic text-sm text-center">
-                Transaction has been processed, please refresh assets
+                transaction has been processed, please refresh assets
               </div>
             )}
           </div>
@@ -833,10 +833,10 @@ const AssetList: React.FC = () => {
                   />
                 </th>
                 <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-left">
-                  Symbol
+                  symbol
                 </th>
                 <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
-                  Balance
+                  balance
                 </th>
                 <th className="lowercase whitespace-nowrap p-4 font-medium text-white text-lg text-right">
                   value
@@ -892,7 +892,7 @@ const AssetList: React.FC = () => {
                   <tr>
                     <td className="lowercase table-cell" colSpan={100}>
                       <div className="lowercase text-center text-white text-lg lg:text-4xl bg-black flex items-center gap-2 min-h-48 h-full w-full justify-center animate-pulse">
-                        Fetching Data...{" "}
+                        fetching data...{" "}
                         <svg
                           width="72"
                           height="72"
@@ -925,7 +925,7 @@ const AssetList: React.FC = () => {
                 <tr>
                   <td className="table-cell" colSpan={5}>
                     <div className="text-center font-black uppercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
-                      No Data
+                      no data
                     </div>
                   </td>
                 </tr>
@@ -1168,7 +1168,7 @@ const AssetList: React.FC = () => {
                   }
                 }}
               >
-                Send
+                send
               </button>
             </div>
           </div>
@@ -1290,7 +1290,7 @@ const AssetList: React.FC = () => {
 
               <details className="lowercase overflow-hidden rounded border border-gray-300 [&_summary::-webkit-details-marker]:hidden">
                 <summary className="lowercase lex cursor-pointer items-center justify-between gap-2 text-white bg-black p-4 transition">
-                  <span className="lowercase text-sm font-medium text-white bg-black"> Sort </span>
+                  <span className="lowercase text-sm font-medium text-white bg-black"> sort </span>
 
                   {/* <span className="lowercase transition group-open:-rotate-180 text-white bg-black">
                     <svg
@@ -1313,7 +1313,7 @@ const AssetList: React.FC = () => {
                 <div className="lowercase border-t border-gray-200 text-white bg-black">
                   <header className="lowercase flex items-center justify-between p-4">
                     <span className="lowercase text-sm text-white bg-black flex items-center gap-2">
-                      Ascending
+                      ascending
                       <label className="lowercase relative h-8 w-12 cursor-pointer [-webkit-tap-highlight-color:_transparent]">
                         <input
                           type="checkbox"
@@ -1331,7 +1331,7 @@ const AssetList: React.FC = () => {
                           </span>
                         </span>
                       </label>
-                      Descending
+                      descending
                     </span>
                   </header>
 
@@ -1348,7 +1348,7 @@ const AssetList: React.FC = () => {
                         />
 
                         <span className="lowercase text-sm font-medium text-white bg-black">
-                          Symbol
+                          symbol
                         </span>
                       </label>
                     </li>
@@ -1365,7 +1365,7 @@ const AssetList: React.FC = () => {
                         />
 
                         <span className="lowercase text-sm font-medium text-white bg-black">
-                          Balance
+                          balance
                         </span>
                       </label>
                     </li>
@@ -1382,7 +1382,7 @@ const AssetList: React.FC = () => {
                         />
 
                         <span className="lowercase text-sm font-medium text-white bg-black">
-                          swap Value
+                          swap value
                         </span>
                       </label>
                     </li>
@@ -1418,7 +1418,7 @@ const AssetList: React.FC = () => {
                     fill="currentColor"
                   />
                 </svg>
-                Refresh Assets
+                refresh assets
               </div>
             </div>
           </div>

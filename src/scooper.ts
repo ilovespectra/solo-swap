@@ -325,9 +325,16 @@ async function sweepTokens(
         },
       };
 
-      // // while on local host, use the cors proxy code 
-      // // uncomment this block:
+      // // On production, jupiter api will throw cors error when it's rate limited,
+      // // where as on localhost, it will return rate limited.
 
+      // // If you want to fix cors error, you have to use a proxy like heroku,
+      // // but it will just change the error message to rate limited since you are using the free api.
+
+      // // You can test it by using the cors proxy code below.
+
+      // // uncomment this block if you want to use cors proxy.
+      // // proxy to avoid cors issues temporarily on localhost.
       // // visit https://cors-anywhere.herokuapp.com/corsdemo to enable temporary access
       // const corsProxy = "https://cors-anywhere.herokuapp.com/";
       // const swapUrl = "https://quote-api.jup.ag/v6/swap";

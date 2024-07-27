@@ -821,7 +821,7 @@ const AssetList: React.FC = () => {
             <thead className="ltr:text-left rtl:text-right">
               <tr>
                 <th className="sticky inset-y-0 start-0 bg-black text-white p-4">
-                  <label className="sr-only">Select All</label>
+                  <label className="sr-only">select all</label>
 
                   <input
                     type="checkbox"
@@ -1132,7 +1132,7 @@ const AssetList: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <div className="h-[1px] bg-white/60 flex-1" />
-              <p className="opacity-60 text-center text-xs">OR</p>
+              <p className="opacity-60 text-center text-xs">or</p>
               <div className="h-[1px] bg-white/60 flex-1" />
             </div>
             <div className="grid  gap-2">
@@ -1143,7 +1143,7 @@ const AssetList: React.FC = () => {
                   setSendToWallet(e.target.value);
                 }}
                 disabled={isButtonDisabled}
-                placeholder="Wallet address..."
+                placeholder="wallet address..."
                 className={`block rounded px-5 py-3 border border-white bg-black transition w-full ${
                   isButtonDisabled ? "hover:cursor-not-allowed opacity-10" : "hover:opacity-80"
                 }`}
@@ -1192,11 +1192,11 @@ const AssetList: React.FC = () => {
                 "pointer-events-none"
               }`}
             >
-              <label className="lowercase bg-black text-white sr-only"> Search </label>
+              <label className="lowercase bg-black text-white sr-only"> search </label>
 
               <input
                 type="text"
-                placeholder="Search Asset"
+                placeholder="search asset"
                 className="w-full rounded border bg-black border-gray-600 py-2.5 px-4 pe-10 shadow-sm sm:text-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

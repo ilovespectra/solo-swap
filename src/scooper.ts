@@ -483,7 +483,7 @@ async function findQuotes(
  * @returns [instance of Jupiter API, map of known token types by mint address]
  */
 async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo }]> {
-  const ENDPOINT = process.env.QUICKNODE_API;
+  const ENDPOINT = process.env.NEXT_PUBLIC_QUICKNODE_API;
   const CONFIG = {
     basePath: ENDPOINT,
   };

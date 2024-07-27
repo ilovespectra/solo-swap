@@ -8,6 +8,7 @@ import {
   TransactionInstruction,
   AddressLookupTableAccount,
   Transaction,
+  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -53,9 +54,12 @@ interface TokenBalance {
 }
 
 const USDC_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const USDT_TOKEN_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+const BONK_TOKEN_MINT = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
+const SOL_TOKEN_MINT = "So11111111111111111111111111111111111111112";
 
 const liquidStableTokens = ["mSOL", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
-const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
+const forbiddenTokens = ["USDC", "USDT" ,"BONK" ,"SOL"  ].concat(liquidStableTokens);
 
 /**
  * Get the total fee amount
@@ -207,7 +211,7 @@ async function getAddressLookupTableAccounts(
     if (accountInfo) {
       const addressLookupTableAccount = new AddressLookupTableAccount({
         key: new PublicKey(addressLookupTableAddress),
-        state: AddressLookupTableAccount.deserialize(accountInfo.data),
+        state: AddressLookupTableAccount.deserialize(accountInfo.data as any),
       });
       acc.push(addressLookupTableAccount);
     }
@@ -307,8 +311,29 @@ async function sweepTokens(
   const transactions: [string, VersionedTransaction][] = [];
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
+  console.log("assets:", assets);
+  console.log("percentage:", percentage);
+
+  const newPerc = percentage / 100
+
+  console.log("percentage:", newPerc);
+
+  const totalAmount = assets.reduce((sum, asset) => {
+    return sum + Number(asset.quote?.inAmount);
+  }, 0);
+  
+  const totalAmountoUT = assets.reduce((sum, asset) => {
+    return sum + Number(asset.quote?.outAmount);
+  }, 0);
+  console.log("Total Amount:", totalAmount);
+  console.log("Total totalAmountoUT:",( totalAmountoUT / LAMPORTS_PER_SOL) );
+
+
+  
+
+
   await Promise.allSettled(
-    assets.map(async (asset) => {
+    assets.map(async (asset : any) => {
       // const quoteRequest: QuoteGetRequest = {
       //   inputMint: asset.asset.token.address,
       //   outputMint: USDC_TOKEN_MINT,
@@ -317,6 +342,31 @@ async function sweepTokens(
       // };
       // const quote = await quoteApi.quoteGet(quoteRequest);
       // console.log("quote:", quote);
+
+
+      // if (asset.quote) { // Ensure that the quote object exists
+        console.log(` inAmount: ${asset.quote.inAmount}`);
+        console.log(` outAmount: ${asset.quote.outAmount}`);
+
+
+        const inAmount = parseFloat(asset.quote.inAmount || "0");
+        const outAmount = parseFloat(asset.quote.outAmount || "0");
+        
+        const roundedInAmount = Math.floor(inAmount * newPerc); // or Math.ceil() or Math.round() depending on your needs
+        const roundedOutAmount = Math.floor(outAmount * newPerc); // or Math.ceil() or Math.round() depending on your needs
+
+        asset.quote.inAmount =  BigInt(roundedInAmount).toString(); 
+        asset.quote.outAmount =  BigInt(roundedOutAmount).toString()
+        // Adjust amounts by subtracting the calculated percentage
+    //     ().toString();
+    // ().toString();
+        
+        console.log(`Updated inAmount: ${asset.quote.inAmount}`);
+        console.log(`Updated outAmount: ${asset.quote.outAmount}`);
+      // } else {
+      //   // Handle the case where asset.quote is undefined
+      //   console.error("No quote available for asset:", asset);
+      // }
 
       const rq: SwapPostRequest = {
         swapRequest: {
@@ -362,6 +412,17 @@ async function sweepTokens(
       }
     })
   );
+
+  const totalAmountNew = assets.reduce((sum, asset) => {
+    return sum + Number(asset.quote?.inAmount);
+  }, 0);
+  
+  const totalAmountoUTNew = assets.reduce((sum, asset) => {
+    return sum + Number(asset.quote?.outAmount);
+  }, 0);
+  console.log("Total Amount:", totalAmountNew);
+  console.log("Total totalAmountoUT:",( totalAmountoUTNew / LAMPORTS_PER_SOL) );
+
 
   console.log("transactions");
   console.log(transactions);
@@ -646,5 +707,8 @@ export {
   getTotalFee,
   sendTokens,
   USDC_TOKEN_MINT,
+  USDT_TOKEN_MINT,
+  BONK_TOKEN_MINT,
+  SOL_TOKEN_MINT
 };
 export type { TokenInfo, TokenBalance };

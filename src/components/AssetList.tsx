@@ -9,6 +9,9 @@ import {
   USDC_TOKEN_MINT,
   getAssetBurnReturn,
   sendTokens,
+  USDT_TOKEN_MINT,
+  BONK_TOKEN_MINT,
+  SOL_TOKEN_MINT
 } from "../scooper";
 import { DefaultApi, SwapInstructionsResponse, QuoteResponse } from "@jup-ag/api";
 import { ToastContainer, toast } from "react-toastify";
@@ -60,10 +63,12 @@ const AssetList: React.FC = () => {
   const [state, setState] = React.useState<ApplicationStates>(ApplicationStates.LOADING);
   const [selectAll, setSelectAll] = useState(false);
   const [openModal, setOpenModal] = useState("");
+  const [outPutMint, setoutPutMint] = useState(USDC_TOKEN_MINT);
   const [search, setSearch] = useState("");
   const [percentage, setPercentage] = useState(100);
   const [sendToWallet, setSendToWallet] = useState("");
-
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState('USDC') ;
   // Filters
   const [showZeroBalance, setShowZeroBalance] = useState(false);
   const [showStrict, setShowStrict] = useState(false);
@@ -137,14 +142,14 @@ const AssetList: React.FC = () => {
   /* 2: Load information about users tokens, add any tokens to list */
   React.useEffect(() => {
     // Run only once
-    if (walletAddress && jupiterQuoteApi && tokens && state == ApplicationStates.LOADING) {
+    if (walletAddress && jupiterQuoteApi && tokens && state == ApplicationStates.LOADING ) {
       setState(ApplicationStates.LOADED_JUPYTER);
       setAssetList({});
       console.log("loading assets for wallet: " + walletAddress);
       findQuotes(
         connection,
         tokens,
-        USDC_TOKEN_MINT,
+        outPutMint,
         walletAddress,
         jupiterQuoteApi,
         percentage,
@@ -168,9 +173,30 @@ const AssetList: React.FC = () => {
         setState(ApplicationStates.LOADED_QUOTES);
       });
     }
-  }, [walletAddress, jupiterQuoteApi, tokens, state]);
+  }, [walletAddress, jupiterQuoteApi, tokens, state ]);
   /* End application startup */
 
+  useEffect(() => 
+  {
+    if(selectedOption === 'USDC') {
+      setoutPutMint(USDC_TOKEN_MINT);
+      reload()
+
+    } else if(selectedOption === 'USDT') {
+      setoutPutMint(USDT_TOKEN_MINT)
+      reload()
+
+    }else if(selectedOption === 'BONK') {
+      setoutPutMint(BONK_TOKEN_MINT)
+      reload()
+
+    }else if(selectedOption === 'SOL') {
+      setoutPutMint(SOL_TOKEN_MINT)
+      reload()
+
+    }
+
+  } , [selectedOption])
   /* Scoop button callback, clean all the tokens! */
   const scoop = () => {
     // Run only once
@@ -325,6 +351,17 @@ const AssetList: React.FC = () => {
       });
   };
 
+
+  const options = ['USDC', 'USDT', 'BONK', 'SOL'];
+
+  const toggleDropdown = () => setIsOpen(!isOpen);
+
+  const handleOptionClick = (option : any) => {
+    setSelectedOption(option);
+    setIsOpen(false);
+  };
+
+  console.log("outPutMint",outPutMint)
   const SummaryModal = () => {
     return (
       <div
@@ -812,6 +849,7 @@ const AssetList: React.FC = () => {
       </div>
     );
   };
+  const value = ((totalScoop / 10 ** 6 / 100) * (percentage || 0)).toFixed(2).toLocaleString()
 
   const ScoopList = () => {
     return (
@@ -1093,7 +1131,7 @@ const AssetList: React.FC = () => {
 
               <div>
                 <p className="lowercase text-2xl font-medium bg-black text-white">
-                  ${((totalScoop / 10 ** 6 / 100) * (percentage || 0)).toFixed(2).toLocaleString()}
+                  ${value}
                 </p>
                 <div>
                   <input
@@ -1112,6 +1150,30 @@ const AssetList: React.FC = () => {
                 <p className="lowercase text-sm bg-black text-white">to swap</p>
               </div>
             </article>
+
+            <button
+        className={`inline-block rounded bg-black border border-white text-white lowercase py-3 font-medium transition focus:outline-none focus:ring text-xl`}
+        onClick={toggleDropdown}
+        disabled={  options.length === 1} // Disable if only one option is available
+      >
+        {selectedOption}
+        
+      </button>
+      {isOpen && (
+        <ul className=" top-full mt-1 w-full bg-black border border-white">
+          {options.map((option) => (
+            <li
+              key={option}
+              className="py-2 px-4 hover:bg-gray-700 cursor-pointer"
+              onClick={() => handleOptionClick(option)}
+            >
+              {option}
+            </li>
+          ))}
+        </ul>
+      )}
+
+
             <button
               className={`inline-block rounded bg-black border border-white text-white lowercase py-3 font-medium transition focus:outline-none focus:ring text-xl ${
                 isButtonDisabled

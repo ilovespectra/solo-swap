@@ -55,7 +55,7 @@ interface TokenBalance {
 const USDC_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 const liquidStableTokens = ["mSOL", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
-const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
+export const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
 
 /**
  * Get the total fee amount
@@ -299,6 +299,7 @@ async function sweepTokens(
   connection: Connection,
   assets: Asset[],
   quoteApi: DefaultApi,
+  outputMint: string,
   percentage: number,
   transactionStateCallback: (id: string, state: string) => void,
   transactionIdCallback: (id: string, txid: string) => void,
@@ -309,19 +310,22 @@ async function sweepTokens(
 
   await Promise.allSettled(
     assets.map(async (asset) => {
-      // const quoteRequest: QuoteGetRequest = {
-      //   inputMint: asset.asset.token.address,
-      //   outputMint: USDC_TOKEN_MINT,
-      //   amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
-      //   slippageBps: 1500,
-      // };
-      // const quote = await quoteApi.quoteGet(quoteRequest);
-      // console.log("quote:", quote);
+      if (!asset.checked) {
+        return;
+      }
+      const quoteRequest: QuoteGetRequest = {
+        inputMint: asset.asset.token.address,
+        outputMint: outputMint,
+        amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
+        slippageBps: 1500,
+      };
+      const quote = await quoteApi.quoteGet(quoteRequest);
+      console.log("quote:", quote);
 
       const rq: SwapPostRequest = {
         swapRequest: {
           userPublicKey: wallet.publicKey!.toBase58(),
-          quoteResponse: asset.quote!,
+          quoteResponse: quote,
         },
       };
 
@@ -440,7 +444,7 @@ async function findQuotes(
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.token.address,
         outputMint: outputMint,
-        amount: Math.floor((Number(asset.balance) / 100) * percentage), // Casting this to number can discard precision...
+        amount: Math.floor(Number(asset.balance)), // Casting this to number can discard precision...
         slippageBps: 1500,
       };
 
@@ -482,7 +486,9 @@ async function findQuotes(
  *
  * @returns [instance of Jupiter API, map of known token types by mint address]
  */
-async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo }]> {
+async function loadJupyterApi(): Promise<
+  [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
+> {
   const ENDPOINT = process.env.NEXT_PUBLIC_QUICKNODE_API;
   const CONFIG = {
     basePath: ENDPOINT,
@@ -490,19 +496,24 @@ async function loadJupyterApi(): Promise<[DefaultApi, { [id: string]: TokenInfo 
   let quoteApi = createJupiterApiClient(CONFIG);
 
   // let quoteApi = createJupiterApiClient();
-  const allTokens = await fetch("https://token.jup.ag/all");
+  const allTokens = await fetch("https://tokens.jup.ag/tokens");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};
+  const verifiedTokenMap: { [id: string]: TokenInfo } = {};
   allList.forEach((token: TokenInfo) => {
     tokenMap[token.address] = token;
+    if (tokenMap[token.address]?.tags.includes("verified")) {
+      verifiedTokenMap[token.address] = token;
+    }
   });
 
-  const strictTokens = await fetch("https://token.jup.ag/strict");
-  const strictList = await strictTokens.json();
-  strictList.forEach((token: TokenInfo) => {
-    tokenMap[token.address].strict = true;
-  });
-  return [quoteApi, tokenMap];
+  // const strictTokens = await fetch("https://token.jup.ag/strict");
+  // const strictList = await strictTokens.json();
+  // strictList.forEach((token: TokenInfo) => {
+  //   tokenMap[token.address].strict = true;
+  // });
+
+  return [quoteApi, tokenMap, verifiedTokenMap];
 }
 
 async function buildTransferTransaction(

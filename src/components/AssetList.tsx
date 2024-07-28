@@ -9,6 +9,7 @@ import {
   USDC_TOKEN_MINT,
   getAssetBurnReturn,
   sendTokens,
+  forbiddenTokens,
 } from "../scooper";
 import { DefaultApi, SwapInstructionsResponse, QuoteResponse } from "@jup-ag/api";
 import { ToastContainer, toast } from "react-toastify";
@@ -47,7 +48,14 @@ class AssetState {
   }
 }
 
-const forbiddenTokens = ["USDC"];
+function trimAddress(address: string) {
+  if (address.length <= 7) {
+    return address; // If address is shorter than or equal to 7 characters, return it as is
+  }
+  const firstPart = address.slice(0, 4);
+  const lastPart = address.slice(-3);
+  return `${firstPart}...${lastPart}`;
+}
 
 const AssetList: React.FC = () => {
   const { connection } = useConnection();
@@ -57,12 +65,15 @@ const AssetList: React.FC = () => {
   }>({});
   const [walletAddress, setWalletAddress] = React.useState("");
   const [tokens, setTokens] = React.useState<{ [id: string]: TokenInfo }>({});
+  const [verifiedtokens, setVerifiedTokens] = React.useState<{ [id: string]: TokenInfo }>({});
   const [state, setState] = React.useState<ApplicationStates>(ApplicationStates.LOADING);
   const [selectAll, setSelectAll] = useState(false);
   const [openModal, setOpenModal] = useState("");
   const [search, setSearch] = useState("");
-  const [percentage, setPercentage] = useState(100);
+  const [percentage, setPercentage] = useState(0);
+  const [swapValue, setSwapValue] = useState(0);
   const [sendToWallet, setSendToWallet] = useState("");
+  const [swapToToken, setSwapToToken] = useState<TokenInfo>();
 
   // Filters
   const [showZeroBalance, setShowZeroBalance] = useState(false);
@@ -91,6 +102,11 @@ const AssetList: React.FC = () => {
     );
 
     setAssetList(updatedAssetListObject);
+    if (!selectAll) {
+      setSwapValue((totalPossibleScoop / 100) * percentage);
+    } else {
+      setSwapValue(0);
+    }
   };
 
   function updateAssetList(
@@ -128,7 +144,9 @@ const AssetList: React.FC = () => {
   /* 1.b: Load the Jupiter Quote API */
   const [jupiterQuoteApi, setQuoteApi] = React.useState<DefaultApi | null>();
   React.useEffect(() => {
-    loadJupyterApi().then(([quoteApi, tokenMap]) => {
+    loadJupyterApi().then(([quoteApi, tokenMap, verifiedTokenMap]) => {
+      setSwapToToken(tokenMap[USDC_TOKEN_MINT]);
+      setVerifiedTokens(verifiedTokenMap);
       setTokens(tokenMap);
       setQuoteApi(quoteApi);
     });
@@ -174,17 +192,18 @@ const AssetList: React.FC = () => {
   /* Scoop button callback, clean all the tokens! */
   const scoop = () => {
     // Run only once
-    if (state == ApplicationStates.LOADED_QUOTES) {
+    if (swapToToken && jupiterQuoteApi && state == ApplicationStates.LOADED_QUOTES) {
       setState(ApplicationStates.SCOOPING);
       sweepTokens(
         wallet,
         connection,
         Object.values(assetList),
-        jupiterQuoteApi!,
+        jupiterQuoteApi,
+        swapToToken.address,
         percentage,
         (id: string, state: string) => {
           updateAssetList((aL) => {
-            assetList[id].transactionState = state;
+            aL[id].transactionState = state;
             return aL;
           });
         },
@@ -217,7 +236,7 @@ const AssetList: React.FC = () => {
         percentage,
         (id: string, state: string) => {
           updateAssetList((aL) => {
-            assetList[id].transactionState = state;
+            aL[id].transactionState = state;
             return aL;
           });
         },
@@ -239,12 +258,13 @@ const AssetList: React.FC = () => {
 
   /* Maintain counters of the total possible yield and yield from selected swaps */
   var totalPossibleScoop = 0;
-  var totalScoop = 0;
+  var maxPossibleScoop = 0;
+  // var totalScoop = 0;
 
   Object.entries(assetList).forEach(([key, asset]) => {
     if (asset.quote) {
       if (asset.checked) {
-        totalScoop += Number(asset.quote.outAmount);
+        maxPossibleScoop += Number(asset.quote.outAmount);
       }
       totalPossibleScoop += Number(asset.quote.outAmount);
     }
@@ -299,19 +319,23 @@ const AssetList: React.FC = () => {
     const inputPercentage = parseFloat(e.target.value);
     if (inputPercentage > 100) {
       setPercentage(100);
+      setSwapValue(maxPossibleScoop);
     } else {
       setPercentage(inputPercentage);
+      setSwapValue((maxPossibleScoop / 100) * inputPercentage);
     }
   };
 
-  function trimWallet(wallet: string) {
-    if (wallet.length <= 7) {
-      return wallet; // If wallet is shorter than or equal to 7 characters, return it as is
+  const handleSwapValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const swapValue = parseFloat(e.target.value) * 10 ** 6;
+    if (swapValue > maxPossibleScoop) {
+      setSwapValue(maxPossibleScoop);
+      setPercentage(100);
+    } else {
+      setSwapValue(swapValue);
+      setPercentage((100 / totalPossibleScoop) * swapValue);
     }
-    const firstPart = wallet.slice(0, 4);
-    const lastPart = wallet.slice(-3);
-    return `${firstPart}...${lastPart}`;
-  }
+  };
 
   const handleCopyClick = (text: string) => {
     navigator.clipboard
@@ -527,13 +551,18 @@ const AssetList: React.FC = () => {
                   </div>
 
                   <div className="flex justify-between">
-                    <dt>total expected swap value</dt>
+                    <dt>total swap value</dt>
                     <dd>
                       $
-                      {((totalScoop / 10 ** 6 / 100) * (percentage || 0))
+                      {((maxPossibleScoop / 10 ** 6 / 100) * (percentage || 0))
                         .toFixed(2)
                         .toLocaleString()}
                     </dd>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <dt>swap to</dt>
+                    <dd>{swapToToken?.symbol}</dd>
                   </div>
                 </dl>
               </div>
@@ -762,10 +791,10 @@ const AssetList: React.FC = () => {
                   </div>
 
                   <div className="flex justify-between">
-                    <dt>total value send</dt>
+                    <dt>total send value</dt>
                     <dd>
                       $
-                      {((totalScoop / 10 ** 6 / 100) * (percentage || 0))
+                      {((maxPossibleScoop / 10 ** 6 / 100) * (percentage || 0))
                         .toFixed(2)
                         .toLocaleString()}
                     </dd>
@@ -773,7 +802,7 @@ const AssetList: React.FC = () => {
                   <div className="flex justify-between">
                     <dt>send to wallet</dt>
                     <dd className="truncate flex gap-1 items-center">
-                      {trimWallet(sendToWallet)}
+                      {trimAddress(sendToWallet)}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -955,6 +984,13 @@ const AssetList: React.FC = () => {
                               aL[entry.asset?.token.address].checked = change.target.checked;
                               return aL;
                             });
+                            setSwapValue((v) => {
+                              if (change.target.checked) {
+                                return v + (Number(entry.quote?.outAmount || 0) / 100) * percentage;
+                              } else {
+                                return v - (Number(entry.quote?.outAmount || 0) / 100) * percentage;
+                              }
+                            });
                           }}
                           type="checkbox"
                           disabled={state !== ApplicationStates.LOADED_QUOTES}
@@ -1092,24 +1128,56 @@ const AssetList: React.FC = () => {
               </span>
 
               <div>
-                <p className="lowercase text-2xl font-medium bg-black text-white">
-                  ${((totalScoop / 10 ** 6 / 100) * (percentage || 0)).toFixed(2).toLocaleString()}
-                </p>
-                <div>
+                <p>max swap value ${(maxPossibleScoop / 10 ** 6).toFixed(2).toString()}</p>
+                <div className="mt-2">
+                  <span className="pr-2 text-xl">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={totalPossibleScoop}
+                    value={swapValue / 10 ** 6}
+                    onChange={handleSwapValueChange}
+                    className="lowercase border border-gray-300 bg-black w-40 text-white rounded-md p-2"
+                  />
+                </div>
+                <div className="mt-2">
+                  <span className="pr-2 text-xl">%</span>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={percentage}
                     onChange={handlePercentageChange}
-                    className="lowercase border border-gray-300 bg-black w-24 text-white rounded-md p-2"
+                    className="lowercase border border-gray-300 bg-black w-40 text-white rounded-md p-2"
                   />
-                  <span>%</span>
                 </div>
                 <p className="lowercase text-2xl mt-2 font-medium bg-black text-white">
                   {/* ${(valueToSwap / 10 ** 6).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")} */}
                 </p>
-                <p className="lowercase text-sm bg-black text-white">to swap</p>
+                <div className="lowercase text-sm bg-black text-white flex items-center gap-2">
+                  to swap to{" "}
+                  <button
+                    onClick={() => setOpenModal("token")}
+                    className="border border-white py-1 px-2 rounded-md flex gap-1 items-center"
+                  >
+                    {swapToToken?.symbol || "-"}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="size-3"
+                    >
+                      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </article>
             <button
@@ -1343,7 +1411,7 @@ const AssetList: React.FC = () => {
                           name="sort"
                           value="symbol"
                           checked={sortOption === "symbol"}
-                          onClick={(e) => setSortOption("symbol")}
+                          onChange={(e) => setSortOption("symbol")}
                           className="lowercase text-white bg-black h-5 w-5 rounded border-gray-300"
                         />
 
@@ -1432,6 +1500,9 @@ const AssetList: React.FC = () => {
       <div className="flex flex-col gap-4 z-30 relative">
         <ToastContainer />
         <SummaryModal />
+        {openModal === "token" && (
+          <TokenModal onClose={setOpenModal} onSelect={setSwapToToken} tokenList={verifiedtokens} />
+        )}
         <SendModal />
         {ScoopList()}
       </div>
@@ -1439,4 +1510,79 @@ const AssetList: React.FC = () => {
   );
 };
 
+const TokenModal = ({
+  onClose,
+  onSelect,
+  tokenList,
+}: {
+  onClose: React.Dispatch<React.SetStateAction<string>>;
+  onSelect: React.Dispatch<React.SetStateAction<TokenInfo | undefined>>;
+  tokenList: { [id: string]: TokenInfo };
+}) => {
+  const [inputToken, setInputToken] = useState("");
+
+  const filteredTokenList = Object.values(tokenList).filter((token) => {
+    return (
+      token.name.toLowerCase().includes(inputToken.toLowerCase()) ||
+      token.symbol.toLowerCase().includes(inputToken.toLowerCase()) ||
+      token.address.toLowerCase().includes(inputToken.toLowerCase())
+    );
+  });
+
+  return (
+    <div
+      className={`lowercase fixed inset-0 z-30 flex h-full w-full flex-col gap-4 bg-black bg-opacity-75 transition-all duration-1000 items-center justify-center`}
+    >
+      <div
+        className="relative grid w-screen max-w-xl border border-gray-600 bg-black px-4 py-8 sm:px-6 lg:px-8 rounded max-h-[80vh] gap-8"
+        role="dialog"
+      >
+        <button
+          className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
+          onClick={() => onClose("")}
+        >
+          <span className="sr-only">Close cart</span>
+
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className="h-5 w-5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <input
+          placeholder="Search by token or paste address"
+          className={`block rounded px-5 py-3 border border-white bg-black transition w-full`}
+          value={inputToken}
+          onChange={(e) => setInputToken(e.target.value)}
+        />
+        <div className="overflow-auto flex flex-col">
+          {filteredTokenList.map((token) => (
+            <button
+              onClick={() => {
+                onSelect(token);
+                onClose("");
+              }}
+              key={token.address + "modal"}
+              className={`flex gap-2 items-start p-2 hover:bg-white/10 rounded-md ${
+                forbiddenTokens.includes(token.symbol) ? "-order-1" : ""
+              }`}
+            >
+              <img src={token.logoURI} className="rounded-full h-10 w-10" />
+              <div className="text-left">
+                <p>{token.symbol}</p>
+                <p className="opacity-60">{trimAddress(token.address)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 export default AssetList;

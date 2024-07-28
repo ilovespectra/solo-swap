@@ -38,7 +38,7 @@
         "@solana/wallet-adapter-react": "^0.15.35",
         "@solana/wallet-adapter-react-ui": "^0.9.35",
         "@solana/wallet-adapter-wallets": "^0.19.32",
-        "@solana/web3.js": "^1.93.1",
+        "@solana/web3.js": "^1.95.2",
         "@vercel/analytics": "^1.1.1",
         "dotenv": "^16.4.5",
         "gulp-inline-source": "^4.0.0",

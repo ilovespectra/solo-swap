@@ -229,7 +229,7 @@ const AssetList: React.FC = () => {
         .catch((err) => {
           const notify = () => toast.error("user rejected transaction!");
           notify();
-          console.log("error signing for scoop!" + err);
+          console.log("error signing for swap!" + err);
           setState(ApplicationStates.LOADED_QUOTES);
         });
     }
@@ -324,8 +324,6 @@ const AssetList: React.FC = () => {
 
     return ascending === true ? comparison : -comparison; // Adjust comparison based on sortOrder
   });
-
-  console.log("FILTERED DATA HERE", filteredData);
 
   const handlePercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputPercentage = parseFloat(e.target.value);

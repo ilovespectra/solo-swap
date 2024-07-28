@@ -74,6 +74,8 @@ const AssetList: React.FC = () => {
   const [swapValue, setSwapValue] = useState(0);
   const [sendToWallet, setSendToWallet] = useState("");
   const [swapToToken, setSwapToToken] = useState<TokenInfo>();
+  const [slippage, setSlippage] = useState("0.3");
+  const [priorityFee, setPriorityFee] = useState("low");
 
   // Filters
   const [showZeroBalance, setShowZeroBalance] = useState(false);
@@ -144,6 +146,14 @@ const AssetList: React.FC = () => {
   /* 1.b: Load the Jupiter Quote API */
   const [jupiterQuoteApi, setQuoteApi] = React.useState<DefaultApi | null>();
   React.useEffect(() => {
+    const savedSlippage = localStorage.getItem("slippage");
+    if (savedSlippage !== null) {
+      setSlippage(savedSlippage);
+    }
+    const savedPriorityFee = localStorage.getItem("priorityFee");
+    if (savedPriorityFee !== null) {
+      setPriorityFee(savedPriorityFee);
+    }
     loadJupyterApi().then(([quoteApi, tokenMap, verifiedTokenMap]) => {
       setSwapToToken(tokenMap[USDC_TOKEN_MINT]);
       setVerifiedTokens(verifiedTokenMap);
@@ -201,6 +211,8 @@ const AssetList: React.FC = () => {
         jupiterQuoteApi,
         swapToToken.address,
         percentage,
+        slippage,
+        priorityFee,
         (id: string, state: string) => {
           updateAssetList((aL) => {
             aL[id].transactionState = state;
@@ -1178,10 +1190,29 @@ const AssetList: React.FC = () => {
                     </svg>
                   </button>
                 </div>
+                <div className="lowercase text-sm mt-2 bg-black text-white flex items-center gap-2">
+                  slippage
+                  <button
+                    onClick={() => setOpenModal("settings")}
+                    className="border border-white py-1 px-2 rounded-md flex gap-1 items-center"
+                  >
+                    {slippage}%
+                  </button>
+                </div>
+                <div className="lowercase text-sm mt-2 bg-black text-white flex items-center gap-2">
+                  priority fee
+                  <button
+                    onClick={() => setOpenModal("settings")}
+                    className="border border-white py-1 px-2 rounded-md flex gap-1 items-center"
+                  >
+                    {priorityFee}
+                  </button>
+                </div>
               </div>
             </article>
+
             <button
-              className={`inline-block rounded bg-black border border-white text-white lowercase py-3 font-medium transition focus:outline-none focus:ring text-xl ${
+              className={`inline-block grow rounded bg-black border border-white text-white lowercase py-3 font-medium transition focus:outline-none focus:ring text-xl ${
                 isButtonDisabled
                   ? "hover:cursor-not-allowed opacity-10"
                   : "hover:shadow-xl hover:opacity-60"
@@ -1503,6 +1534,15 @@ const AssetList: React.FC = () => {
         {openModal === "token" && (
           <TokenModal onClose={setOpenModal} onSelect={setSwapToToken} tokenList={verifiedtokens} />
         )}
+        {openModal === "settings" && (
+          <SettingsModal
+            onClose={setOpenModal}
+            initialSlippage={slippage}
+            updateSlippage={setSlippage}
+            initialPriorityFee={priorityFee}
+            updatePriorityFee={setPriorityFee}
+          />
+        )}
         <SendModal />
         {ScoopList()}
       </div>
@@ -1556,7 +1596,7 @@ const TokenModal = ({
         </button>
 
         <input
-          placeholder="search by token or paste address"
+          placeholder="Search by token or paste address"
           className={`block rounded px-5 py-3 border border-white bg-black transition w-full`}
           value={inputToken}
           onChange={(e) => setInputToken(e.target.value)}
@@ -1585,4 +1625,180 @@ const TokenModal = ({
     </div>
   );
 };
+
+const SettingsModal = ({
+  onClose,
+  updateSlippage,
+  updatePriorityFee,
+  initialSlippage,
+  initialPriorityFee,
+}: {
+  onClose: React.Dispatch<React.SetStateAction<string>>;
+  updateSlippage: React.Dispatch<React.SetStateAction<string>>;
+  updatePriorityFee: React.Dispatch<React.SetStateAction<string>>;
+  initialSlippage: string;
+  initialPriorityFee: string;
+}) => {
+  const [slippage, setSlippage] = useState(initialSlippage);
+  const [priorityFee, setPriorityFee] = useState(initialPriorityFee);
+
+  const handleOnSave = () => {
+    updateSlippage(slippage);
+    localStorage.setItem("slippage", slippage);
+    updatePriorityFee(priorityFee);
+    localStorage.setItem("priorityFee", priorityFee);
+    onClose("");
+  };
+
+  return (
+    <div
+      className={`lowercase fixed inset-0 z-30 flex h-full w-full flex-col gap-4 bg-black bg-opacity-75 transition-all duration-1000 items-center justify-center`}
+    >
+      <div
+        className="relative grid w-screen max-w-xl border border-gray-600 bg-black overflow-auto px-4 py-8 sm:px-6 lg:px-8 rounded max-h-[80vh] gap-8"
+        role="dialog"
+      >
+        <button
+          className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
+          onClick={() => onClose("")}
+        >
+          <span className="sr-only">Close cart</span>
+
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className="h-5 w-5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <p className="text-2xl font-semibold">settings</p>
+
+        <div className="flex flex-col">
+          <p>priority fee</p>
+          <div className="grid grid-cols-4 gap-2 mt-2">
+            <button
+              onClick={() => setPriorityFee("low")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                priorityFee == "low" ? "bg-white text-black" : ""
+              }`}
+            >
+              low
+            </button>
+            <button
+              onClick={() => setPriorityFee("med")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                priorityFee == "med" ? "bg-white text-black" : ""
+              }`}
+            >
+              med
+            </button>
+            <button
+              onClick={() => setPriorityFee("high")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                priorityFee == "high" ? "bg-white text-black" : ""
+              }`}
+            >
+              high
+            </button>
+            <button
+              onClick={() => setPriorityFee("turbo")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                priorityFee == "turbo" ? "bg-white text-black" : ""
+              }`}
+            >
+              turbo
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col">
+          <p>slippage</p>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <button
+              onClick={() => setSlippage("0.3")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                slippage == "0.3" ? "bg-white text-black" : ""
+              }`}
+            >
+              0.3%
+            </button>
+            <button
+              onClick={() => setSlippage("0.5")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                slippage == "0.5" ? "bg-white text-black" : ""
+              }`}
+            >
+              0.5%
+            </button>
+            <button
+              onClick={() => setSlippage("1")}
+              className={`block rounded px-4 py-2 border border-white hover:opacity-60 bg-black transition w-full ${
+                slippage == "1" ? "bg-white text-black" : ""
+              }`}
+            >
+              1%
+            </button>
+          </div>
+
+          <div className="h-[1px] bg-white/40 w-full my-4" />
+
+          <div className="flex border-white border rounded items-center ml-auto w-56">
+            <span className="px-2 text-white/60">custom</span>
+            <input
+              placeholder="0.00"
+              min="0.01"
+              max="100"
+              step="0.01"
+              className="rounded py-2 w-full text-right bg-black focus:outline-0"
+              value={slippage}
+              onChange={(e) => {
+                let value = e.target.value;
+
+                // Allow empty input to enable deletion
+                if (value === "") {
+                  setSlippage("");
+                  return;
+                }
+
+                // Remove any non-numeric characters except for the decimal point
+                value = value.replace(/[^0-9.]/g, "");
+
+                // Limit to 2 decimal places
+                if (value.includes(".")) {
+                  const parts = value.split(".");
+                  if (parts[1].length > 2) {
+                    value = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                  }
+                }
+
+                // Convert value to a number and apply constraints
+                let numericValue = parseFloat(value);
+
+                if (numericValue > 100) {
+                  value = "100";
+                }
+
+                setSlippage(value);
+              }}
+            />
+            <span className="px-2 text-white/60">%</span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleOnSave}
+          className={`block rounded px-5 py-3 border border-white hover:opacity-60 bg-black transition w-full`}
+        >
+          save settings
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default AssetList;

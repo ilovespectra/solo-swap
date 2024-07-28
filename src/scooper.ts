@@ -8,6 +8,7 @@ import {
   TransactionInstruction,
   AddressLookupTableAccount,
   Transaction,
+  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -56,7 +57,7 @@ const USDC_TOKEN_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 const liquidStableTokens = ["mSOL", "JitoSOL", "bSOL", "mrgnLST", "jSOL", "stSOL", "scnSOL", "LST"];
 export const forbiddenTokens = ["USDC", "USDT"].concat(liquidStableTokens);
-
+export const priorityFeeAmount = { low: 0.00005, medium: 0.0001, high: 0.0005, turbo: 0.001 };
 /**
  * Get the total fee amount
  */
@@ -301,6 +302,8 @@ async function sweepTokens(
   quoteApi: DefaultApi,
   outputMint: string,
   percentage: number,
+  slippage: string,
+  priorityFee: string,
   transactionStateCallback: (id: string, state: string) => void,
   transactionIdCallback: (id: string, txid: string) => void,
   errorCallback: (id: string, error: any) => void
@@ -313,19 +316,29 @@ async function sweepTokens(
       if (!asset.checked) {
         return;
       }
+
+      const slippageBps = parseFloat(slippage) * 100;
+      console.log("slippageBps:", slippageBps);
       const quoteRequest: QuoteGetRequest = {
         inputMint: asset.asset.token.address,
         outputMint: outputMint,
         amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
-        slippageBps: 1500,
+        slippageBps: slippageBps,
       };
       const quote = await quoteApi.quoteGet(quoteRequest);
       console.log("quote:", quote);
 
+      const prioritizationFeeLamports =
+        //  @ts-ignore
+        priorityFeeAmount[priorityFee] * LAMPORTS_PER_SOL ||
+        parseFloat(priorityFee) * LAMPORTS_PER_SOL ||
+        priorityFeeAmount["low"] * LAMPORTS_PER_SOL;
+      console.log("prioritizationFeeLamports:", prioritizationFeeLamports);
       const rq: SwapPostRequest = {
         swapRequest: {
           userPublicKey: wallet.publicKey!.toBase58(),
           quoteResponse: quote,
+          prioritizationFeeLamports,
         },
       };
 

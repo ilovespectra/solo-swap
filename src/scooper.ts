@@ -489,7 +489,7 @@ async function findQuotes(
 async function loadJupyterApi(): Promise<
   [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
 > {
-  const ENDPOINT = process.env.NEXT_PUBLIC_QUICKNODE_API;
+  const ENDPOINT = process.env.REACT_APP_QUICKNODE_API;
   const CONFIG = {
     basePath: ENDPOINT,
   };

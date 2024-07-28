@@ -5,7 +5,7 @@ const Info = () => {
     {
       title: "Wait for assets to load",
       description:
-        "Solo Swap will check your wallet for assets that can be swapped and accounts that can be closed and present them in a list below",
+        "Solo Swap will check your wallet for assets that can be swapped and present them in a list below",
       image: `/images/1.png`,
     },
     {
@@ -32,10 +32,10 @@ const Info = () => {
     <section className="bg-[#000000] text-white rounded-3xl relative px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 mb-4 shadow-[-10px_10px_20px_5px_rgba(0,0,0,0.4)] z-20 border border-white">
       <div className="max-w-screen-xl">
         <div className="max-w-xl">
-          <h2 className="lowercase text-3xl font-black sm:text-6xl">solo swap</h2>
+          <h2 className="lowercase text-3xl font-black sm:text-6xl">solo: swap</h2>
           <p className="lowercase mt-4 font-semibold tracking-wide">
             In a pro rata swap, each asset represents the same portion as in your portfolio. Swap
-            selected assets into $USDC via
+            selected assets into selected token via
             <a href="https://jup.ag/">
               {" "}
               <u>Jupiter swaps</u>

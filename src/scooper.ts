@@ -353,21 +353,21 @@ async function sweepTokens(
       // // uncomment this block if you want to use cors proxy.
       // // proxy to avoid cors issues temporarily on localhost.
       // // visit https://cors-anywhere.herokuapp.com/corsdemo to enable temporary access
-      const corsProxy = "https://cors-anywhere.herokuapp.com/";
-      const swapUrl = "https://quote-api.jup.ag/v6/swap";
-      const url = corsProxy + swapUrl;
-      const swapRes = await fetch(url, {
-        method: "POST",
-        cache: "reload",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(rq.swapRequest),
-      });
-      const swap = await swapRes.json();
+      // const corsProxy = "https://cors-anywhere.herokuapp.com/";
+      // const swapUrl = "https://quote-api.jup.ag/v6/swap";
+      // const url = corsProxy + swapUrl;
+      // const swapRes = await fetch(url, {
+      //   method: "POST",
+      //   cache: "reload",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(rq.swapRequest),
+      // });
+      // const swap = await swapRes.json();
 
       // comment the line below if you want to use cors proxy.
-      // const swap = await quoteApi.swapInstructionsPost(rq);
+      const swap = await quoteApi.swapInstructionsPost(rq);
       console.log("swap:", swap);
 
       const tx = await buildBurnTransaction(wallet, connection, blockhash, {

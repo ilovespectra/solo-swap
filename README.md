@@ -17,8 +17,9 @@ solo: swap is a pro-rata token swapper utilizing jupiter aggregators- allowing t
 
 ### open beta - underway
 - [x] go live with mvp
-- [ ] implement `$` / `%` alternation in UI
-- [ ] enable swapping to any token
+- [x] implement `$` / `%` alternation in UI
+- [x] enable swapping to any token
+- [ ] add slippage / priority fees  
 - [ ] get feedback
 - [ ] improve final iteration
 - [ ] close beta

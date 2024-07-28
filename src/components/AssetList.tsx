@@ -965,7 +965,7 @@ const AssetList: React.FC = () => {
               {state === ApplicationStates.LOADED_QUOTES && filteredData.length === 0 && (
                 <tr>
                   <td className="table-cell" colSpan={5}>
-                    <div className="text-center font-black uppercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
+                    <div className="text-center font-black lowercase text-lg lg:text-4xl bg-white/70 flex items-center gap-2 min-h-48 h-full w-full justify-center">
                       no data
                     </div>
                   </td>

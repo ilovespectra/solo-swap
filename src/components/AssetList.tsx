@@ -492,7 +492,7 @@ const AssetList: React.FC = () => {
                             fill="currentColor"
                           />
                         </svg>
-                      ) : entry.transactionState === "Scooped" ? (
+                      ) : entry.transactionState === "scooped" ? (
                         // Checkmark
                         <svg
                           width="24"
@@ -732,7 +732,7 @@ const AssetList: React.FC = () => {
                             fill="currentColor"
                           />
                         </svg>
-                      ) : entry.transactionState === "Sent" ? (
+                      ) : entry.transactionState === "sent" ? (
                         // Checkmark
                         <svg
                           width="24"

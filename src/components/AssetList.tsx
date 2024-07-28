@@ -1556,7 +1556,7 @@ const TokenModal = ({
         </button>
 
         <input
-          placeholder="Search by token or paste address"
+          placeholder="search by token or paste address"
           className={`block rounded px-5 py-3 border border-white bg-black transition w-full`}
           value={inputToken}
           onChange={(e) => setInputToken(e.target.value)}

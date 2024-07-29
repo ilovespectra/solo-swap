@@ -503,7 +503,6 @@ async function loadJupyterApi(): Promise<
   [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
 > {
   const ENDPOINT = process.env.REACT_APP_QUICKNODE_TOKEN;
-  console.log("endpoint = ",ENDPOINT);
   const CONFIG = {
     basePath: ENDPOINT,
   };

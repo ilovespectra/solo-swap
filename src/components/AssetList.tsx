@@ -115,11 +115,7 @@ const AssetList: React.FC = () => {
     updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
   ) {
     setAssetList((aL) => {
-      console.log("old state:");
-      console.log(assetList);
       let newState = updater({ ...aL });
-      console.log("new state:");
-      console.log(newState);
       return newState;
     });
   }
@@ -1168,7 +1164,7 @@ const AssetList: React.FC = () => {
                   to swap to{" "}
                   <button
                     onClick={() => setOpenModal("token")}
-                    className="border border-white py-1 px-2 rounded-md flex gap-1 items-center"
+                    className="lowercase border border-white py-1 px-2 rounded-md flex gap-1 items-center"
                   >
                     {swapToToken?.symbol || "-"}
                     <svg
@@ -1579,7 +1575,7 @@ const TokenModal = ({
           className="absolute end-4 top-4 text-white/60 transition hover:scale-110"
           onClick={() => onClose("")}
         >
-          <span className="sr-only">Close cart</span>
+          <span className="sr-only">close cart</span>
 
           <svg
             xmlns="http://www.w3.org/2000/svg"

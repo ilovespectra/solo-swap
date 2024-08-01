@@ -27,6 +27,7 @@ import { Buffer } from "buffer";
 import { SwapInstructionsResponse, DefaultApi, QuoteResponse } from "@jup-ag/api";
 
 import { QuoteGetRequest, SwapPostRequest, createJupiterApiClient } from "@jup-ag/api";
+import { chunkArray } from "./components/util/utils";
 
 interface TokenInfo {
   address: string;
@@ -311,74 +312,77 @@ async function sweepTokens(
   const transactions: [string, VersionedTransaction][] = [];
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
-  await Promise.allSettled(
-    assets.map(async (asset) => {
-      if (!asset.checked) {
-        return;
-      }
+  const chunks = chunkArray(assets, 7);
+  for (const chunk of chunks) {
+    await Promise.allSettled(
+      chunk.map(async (asset) => {
+        if (!asset.checked) {
+          return;
+        }
 
-      const slippageBps = parseFloat(slippage) * 100;
-      console.log("slippageBps:", slippageBps);
-      const quoteRequest: QuoteGetRequest = {
-        inputMint: asset.asset.token.address,
-        outputMint: outputMint,
-        amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
-        slippageBps: slippageBps,
-      };
-      const quote = await quoteApi.quoteGet(quoteRequest);
-      console.log("quote:", quote);
+        const slippageBps = parseFloat(slippage) * 100;
+        console.log("slippageBps:", slippageBps);
+        const quoteRequest: QuoteGetRequest = {
+          inputMint: asset.asset.token.address,
+          outputMint: outputMint,
+          amount: Math.floor((Number(asset.asset.balance) / 100) * percentage), // Casting this to number can discard precision...
+          slippageBps: slippageBps,
+        };
+        const quote = await quoteApi.quoteGet(quoteRequest);
+        console.log("quote:", quote);
 
-      const prioritizationFeeLamports =
-        //  @ts-ignore
-        priorityFeeAmount[priorityFee] * LAMPORTS_PER_SOL ||
-        parseFloat(priorityFee) * LAMPORTS_PER_SOL ||
-        priorityFeeAmount["low"] * LAMPORTS_PER_SOL;
-      console.log("prioritizationFeeLamports:", prioritizationFeeLamports);
-      const rq: SwapPostRequest = {
-        swapRequest: {
-          userPublicKey: wallet.publicKey!.toBase58(),
-          quoteResponse: quote,
-          prioritizationFeeLamports,
-        },
-      };
+        const prioritizationFeeLamports =
+          //  @ts-ignore
+          priorityFeeAmount[priorityFee] * LAMPORTS_PER_SOL ||
+          parseFloat(priorityFee) * LAMPORTS_PER_SOL ||
+          priorityFeeAmount["low"] * LAMPORTS_PER_SOL;
+        console.log("prioritizationFeeLamports:", prioritizationFeeLamports);
+        const rq: SwapPostRequest = {
+          swapRequest: {
+            userPublicKey: wallet.publicKey!.toBase58(),
+            quoteResponse: quote,
+            prioritizationFeeLamports,
+          },
+        };
 
-      // // On production, jupiter api will throw cors error when it's rate limited,
-      // // where as on localhost, it will return rate limited.
+        // // On production, jupiter api will throw cors error when it's rate limited,
+        // // where as on localhost, it will return rate limited.
 
-      // // If you want to fix cors error, you have to use a proxy like heroku,
-      // // but it will just change the error message to rate limited since you are using the free api.
+        // // If you want to fix cors error, you have to use a proxy like heroku,
+        // // but it will just change the error message to rate limited since you are using the free api.
 
-      // // You can test it by using the cors proxy code below.
+        // // You can test it by using the cors proxy code below.
 
-      // // uncomment this block if you want to use cors proxy.
-      // // proxy to avoid cors issues temporarily on localhost.
-      // // visit https://cors-anywhere.herokuapp.com/corsdemo to enable temporary access
-      // const corsProxy = "https://cors-anywhere.herokuapp.com/";
-      // const swapUrl = "https://quote-api.jup.ag/v6/swap";
-      // const url = corsProxy + swapUrl;
-      // const swapRes = await fetch(url, {
-      //   method: "POST",
-      //   cache: "reload",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify(rq.swapRequest),
-      // });
-      // const swap = await swapRes.json();
+        // // uncomment this block if you want to use cors proxy.
+        // // proxy to avoid cors issues temporarily on localhost.
+        // // visit https://cors-anywhere.herokuapp.com/corsdemo to enable temporary access
+        // const corsProxy = "https://cors-anywhere.herokuapp.com/";
+        // const swapUrl = "https://quote-api.jup.ag/v6/swap";
+        // const url = corsProxy + swapUrl;
+        // const swapRes = await fetch(url, {
+        //   method: "POST",
+        //   cache: "reload",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify(rq.swapRequest),
+        // });
+        // const swap = await swapRes.json();
 
-      // comment the line below if you want to use cors proxy.
-      const swap = await quoteApi.swapInstructionsPost(rq);
-      console.log("swap:", swap);
+        // comment the line below if you want to use cors proxy.
+        const swap = await quoteApi.swapInstructionsPost(rq);
+        console.log("swap:", swap);
 
-      const tx = await buildBurnTransaction(wallet, connection, blockhash, {
-        ...asset,
-        swap: swap,
-      });
-      if (tx) {
-        transactions.push([asset.asset.token.address, tx]);
-      }
-    })
-  );
+        const tx = await buildBurnTransaction(wallet, connection, blockhash, {
+          ...asset,
+          swap: swap,
+        });
+        if (tx) {
+          transactions.push([asset.asset.token.address, tx]);
+        }
+      })
+    );
+  }
 
   console.log("transactions");
   console.log(transactions);
@@ -502,7 +506,7 @@ async function findQuotes(
 async function loadJupyterApi(): Promise<
   [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
 > {
-  const ENDPOINT = process.env.REACT_APP_QUICKNODE_TOKEN;
+  const ENDPOINT = "https://public.jupiterapi.com";
   const CONFIG = {
     basePath: ENDPOINT,
   };

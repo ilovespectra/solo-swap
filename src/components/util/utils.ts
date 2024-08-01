@@ -3,25 +3,25 @@ import { ApplicationStates } from "./applicationStates";
 import { debounce } from "./debounce";
 
 export function updateAssetList(
-    setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
-    updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
-  ) {
-    setAssetList((aL) => {
-      console.log("Old state:", aL);
-      let newState = updater({ ...aL });
-      console.log("New state:", newState);
-      if (newState) {
-        return newState;
-      } else {
-        console.error("Updater returned undefined state");
-        return aL; // Return the previous state to prevent setting undefined
-      }
-    });
-  }
-  
+  setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
+  updater: (arg: { [id: string]: AssetState }) => { [id: string]: AssetState }
+) {
+  setAssetList((aL) => {
+    console.log("Old state:", aL);
+    let newState = updater({ ...aL });
+    console.log("New state:", newState);
+    if (newState) {
+      return newState;
+    } else {
+      console.error("Updater returned undefined state");
+      return aL; // Return the previous state to prevent setting undefined
+    }
+  });
+}
+
 export function reload(
   setAssetList: React.Dispatch<React.SetStateAction<{ [id: string]: AssetState }>>,
-  setState: React.Dispatch<React.SetStateAction<ApplicationStates>>,
+  setState: React.Dispatch<React.SetStateAction<ApplicationStates>>
 ) {
   setAssetList((al) => {
     const newList: { [id: string]: AssetState } = {};
@@ -33,10 +33,7 @@ export function reload(
   setState(ApplicationStates.LOADING);
 }
 
-export function calculateTotalScoop(
-  assetList: { [id: string]: AssetState },
-  percentage: number
-) {
+export function calculateTotalScoop(assetList: { [id: string]: AssetState }, percentage: number) {
   let totalScoop = 0;
   Object.entries(assetList).forEach(([key, asset]) => {
     if (asset.quote) {
@@ -74,5 +71,10 @@ export function handleTotalScoopChange(
   };
 }
 
-
-export {};
+export function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}

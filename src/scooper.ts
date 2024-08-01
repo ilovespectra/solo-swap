@@ -506,7 +506,7 @@ async function findQuotes(
 async function loadJupyterApi(): Promise<
   [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
 > {
-  const ENDPOINT = "https://public.jupiterapi.com";
+  const ENDPOINT = process.env.REACT_APP_QUICKNODE_TOKEN;
   const CONFIG = {
     basePath: ENDPOINT,
   };

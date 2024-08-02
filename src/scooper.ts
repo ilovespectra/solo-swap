@@ -506,14 +506,14 @@ async function findQuotes(
 async function loadJupyterApi(): Promise<
   [DefaultApi, { [id: string]: TokenInfo }, { [id: string]: TokenInfo }]
 > {
-  const ENDPOINT = process.env.REACT_APP_QUICKNODE_TOKEN;
+  const ENDPOINT = "https://public.jupiterapi.com";
   const CONFIG = {
     basePath: ENDPOINT,
   };
   let quoteApi = createJupiterApiClient(CONFIG);
 
   // let quoteApi = createJupiterApiClient();
-  const allTokens = await fetch("https://tokens.jup.ag/tokens");
+  const allTokens = await fetch("https://tokens.jup.ag/tokens_with_markets");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};
   const verifiedTokenMap: { [id: string]: TokenInfo } = {};

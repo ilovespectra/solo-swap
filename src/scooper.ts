@@ -449,53 +449,56 @@ async function findQuotes(
 ): Promise<void> {
   const assets = await getTokenAccounts(walletAddress, connection, tokens);
 
-  await Promise.allSettled(
-    assets.map(async (asset) => {
-      // Skip assets with no balance
-      if (asset.balance == 0n) {
-        return;
-      }
-      console.log("found asset");
-      console.log(asset);
+  const chunks = chunkArray(assets, 10);
+  for (const chunk of chunks) {
+    await Promise.allSettled(
+      chunk.map(async (asset) => {
+        // Skip assets with no balance
+        if (asset.balance == 0n) {
+          return;
+        }
+        console.log("found asset");
+        console.log(asset);
 
-      const quoteRequest: QuoteGetRequest = {
-        inputMint: asset.token.address,
-        outputMint: outputMint,
-        amount: Math.floor(Number(asset.balance)), // Casting this to number can discard precision...
-        slippageBps: 1500,
-      };
+        const quoteRequest: QuoteGetRequest = {
+          inputMint: asset.token.address,
+          outputMint: outputMint,
+          amount: Math.floor(Number(asset.balance)), // Casting this to number can discard precision...
+          slippageBps: 1500,
+        };
 
-      console.log(`quote request`, quoteRequest);
+        console.log(`quote request`, quoteRequest);
 
-      try {
-        const quote = await quoteApi.quoteGet(quoteRequest);
-        // add asset to list of assets only if quote is found
-        foundAssetCallback(asset.token.address, asset);
-        foundQuoteCallback(asset.token.address, quote);
+        try {
+          const quote = await quoteApi.quoteGet(quoteRequest);
+          // add asset to list of assets only if quote is found
+          foundAssetCallback(asset.token.address, asset);
+          foundQuoteCallback(asset.token.address, quote);
 
-        // // disable swap api since it's not needed before scooping
-        // const rq: SwapPostRequest = {
-        //   swapRequest: {
-        //     userPublicKey: walletAddress,
-        //     quoteResponse: quote,
-        //   },
-        // };
+          // // disable swap api since it's not needed before scooping
+          // const rq: SwapPostRequest = {
+          //   swapRequest: {
+          //     userPublicKey: walletAddress,
+          //     quoteResponse: quote,
+          //   },
+          // };
 
-        // try {
-        //   const swap = await quoteApi.swapInstructionsPost(rq);
-        //   foundSwapCallback(asset.token.address, swap);
-        // } catch (swapErr) {
-        //   console.log(`Failed to get swap for ${asset.token.symbol}`);
-        //   console.log(swapErr);
-        //   errorCallback(asset.token.address, "Couldn't get swap transaction");
-        // }
-      } catch (quoteErr) {
-        console.log(`failed to get quote for ${asset.token.symbol}`);
-        console.log(quoteErr);
-        errorCallback(asset.token.address, "couldn't get quote");
-      }
-    })
-  );
+          // try {
+          //   const swap = await quoteApi.swapInstructionsPost(rq);
+          //   foundSwapCallback(asset.token.address, swap);
+          // } catch (swapErr) {
+          //   console.log(`Failed to get swap for ${asset.token.symbol}`);
+          //   console.log(swapErr);
+          //   errorCallback(asset.token.address, "Couldn't get swap transaction");
+          // }
+        } catch (quoteErr) {
+          console.log(`failed to get quote for ${asset.token.symbol}`);
+          console.log(quoteErr);
+          errorCallback(asset.token.address, "couldn't get quote");
+        }
+      })
+    );
+  }
 }
 
 /**

@@ -516,7 +516,7 @@ async function loadJupyterApi(): Promise<
   let quoteApi = createJupiterApiClient(CONFIG);
 
   // let quoteApi = createJupiterApiClient();
-  const allTokens = await fetch("https://tokens.jup.ag/tokens_with_markets");
+  const allTokens = await fetch("https://api.jup.ag/tokens/v1/mints/tradable");
   const allList = await allTokens.json();
   const tokenMap: { [id: string]: TokenInfo } = {};
   const verifiedTokenMap: { [id: string]: TokenInfo } = {};
